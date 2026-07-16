@@ -1,12 +1,12 @@
 # Dragonfly Shipping Parcel Tracker
 
-[![Release](https://img.shields.io/github/v/release/HummelsTech/ha-dragonfly.svg)](https://github.com/HummelsTech/ha-dragonfly/releases)
+[![Release](https://img.shields.io/github/v/release/ha-parcel-integrations/ha-dragonfly.svg)](https://github.com/ha-parcel-integrations/ha-dragonfly/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A custom Home Assistant integration that tracks your [Dragonfly Shipping](https://dragonflyshipping.nl) parcels in the Netherlands. No account is needed — you enter the Track & Trace code yourself, just like on the Dragonfly website. Not even a postal code is required.
 
-Part of the same family as the [DHL](https://github.com/peternijssen/ha-dhl-nl), [PostNL](https://github.com/peternijssen/ha-postnl), [DPD](https://github.com/peternijssen/ha-dpd) and [GLS](https://github.com/peternijssen/ha-gls) integrations: it publishes the same canonical parcel format, statuses and events, so it plugs straight into the [Parcel Aggregator](https://github.com/peternijssen/ha-parcel-aggregator) and cross-carrier automations.
+Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/ha-dhl-nl), [PostNL](https://github.com/ha-parcel-integrations/ha-postnl), [DPD](https://github.com/ha-parcel-integrations/ha-dpd) and [GLS](https://github.com/ha-parcel-integrations/ha-gls) integrations: it publishes the same canonical parcel format, statuses and events, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
 ## Contents
 
@@ -41,7 +41,7 @@ Part of the same family as the [DHL](https://github.com/peternijssen/ha-dhl-nl),
 ### HACS (recommended)
 
 1. In HACS, choose the three-dot menu → **Custom repositories**.
-2. Add `https://github.com/HummelsTech/ha-dragonfly` as an **Integration**.
+2. Add `https://github.com/ha-parcel-integrations/ha-dragonfly` as an **Integration**.
 3. Install **Dragonfly Shipping** and restart Home Assistant.
 
 ### Manual
@@ -126,12 +126,12 @@ logger:
 ## Troubleshooting
 
 - **A parcel shows `unknown`** — Dragonfly has not scanned it yet (their API answers `not_found` until the first scan), or the code is wrong. It will pick up automatically once scanned.
-- **A status logs "Unrecognised Dragonfly step"** — please [open an issue](https://github.com/HummelsTech/ha-dragonfly/issues/new) with the logged line so the mapping can be extended.
+- **A status logs "Unrecognised Dragonfly step"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-dragonfly/issues/new) with the logged line so the mapping can be extended.
 
 ## Related integrations
 
-- [Parcel Aggregator](https://github.com/peternijssen/ha-parcel-aggregator) — combines this integration with DHL, PostNL, DPD and GLS into one set of sensors
-- [DHL NL](https://github.com/peternijssen/ha-dhl-nl) · [PostNL](https://github.com/peternijssen/ha-postnl) · [DPD](https://github.com/peternijssen/ha-dpd) · [GLS](https://github.com/peternijssen/ha-gls)
+- [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) — combines this integration with DHL, PostNL, DPD and GLS into one set of sensors
+- [DHL NL](https://github.com/ha-parcel-integrations/ha-dhl-nl) · [PostNL](https://github.com/ha-parcel-integrations/ha-postnl) · [DPD](https://github.com/ha-parcel-integrations/ha-dpd) · [GLS](https://github.com/ha-parcel-integrations/ha-gls)
 
 ## Disclaimer
 

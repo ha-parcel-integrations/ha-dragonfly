@@ -46,7 +46,7 @@ _STEP_MAP: dict[int, ParcelStatus] = {
     4: ParcelStatus.DELIVERED,         # Afgeleverd
 }
 
-_NEW_ISSUE_URL = "https://github.com/HummelsTech/ha-dragonfly/issues/new"
+_NEW_ISSUE_URL = "https://github.com/ha-parcel-integrations/ha-dragonfly/issues/new"
 
 # ``[link <url>]text[/link]`` markup inside API labels — keep the inner text.
 _LABEL_LINK_RE = re.compile(r"\[link .+?\](.+?)\[/link\]", re.IGNORECASE)
