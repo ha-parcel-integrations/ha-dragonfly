@@ -1,7 +1,7 @@
 {
   "domain": "dragonfly",
   "name": "Dragonfly Shipping",
-  "codeowners": ["@HummelsTech"],
+  "codeowners": ["@peternijssen", "@HummelsTech"],
   "config_flow": true,
   "documentation": "https://github.com/ha-parcel-integrations/ha-dragonfly",
   "integration_type": "hub",

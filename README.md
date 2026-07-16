@@ -22,6 +22,7 @@ Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/h
 - [Debugging](#debugging)
 - [Troubleshooting](#troubleshooting)
 - [Related integrations](#related-integrations)
+- [Credits](#credits)
 - [Disclaimer](#disclaimer)
 - [License](#license)
 
@@ -132,6 +133,10 @@ logger:
 
 - [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) — combines this integration with DHL, PostNL, DPD and GLS into one set of sensors
 - [DHL NL](https://github.com/ha-parcel-integrations/ha-dhl-nl) · [PostNL](https://github.com/ha-parcel-integrations/ha-postnl) · [DPD](https://github.com/ha-parcel-integrations/ha-dpd) · [GLS](https://github.com/ha-parcel-integrations/ha-gls)
+
+## Credits
+
+This integration was originally created by [@HummelsTech](https://github.com/HummelsTech), who built it from the ground up and generously transferred it to the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) organisation so it can be maintained alongside the other parcel integrations. Thank you, Alwin! He remains a codeowner of the integration.
 
 ## Disclaimer
 
