@@ -11,19 +11,22 @@ Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/h
 ## Contents
 
 - [Features](#features)
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Options](#options)
+- [Removal](#removal)
 - [Sensors](#sensors)
 - [Parcel status reference](#parcel-status-reference)
-- [Services](#services)
 - [Events](#events)
+- [Services](#services)
 - [Examples](#examples)
 - [Debugging](#debugging)
 - [Troubleshooting](#troubleshooting)
 - [Related integrations](#related-integrations)
 - [Credits](#credits)
 - [Disclaimer](#disclaimer)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Features
@@ -36,6 +39,13 @@ Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/h
 - Events + device triggers for no-code automations (parcel registered, status changed, delivery time changed)
 - Opt-in per-parcel status history
 - Manual refresh button and a diagnostic last-update sensor
+
+## Requirements
+
+- Home Assistant 2024.7 or newer
+- A Dragonfly Shipping parcel and its Track & Trace code (from the shipping
+  confirmation email or the missed-delivery card) — no account or postal code
+  needed
 
 ## Installation
 
@@ -66,6 +76,11 @@ Open **Configure** on the integration entry:
 | Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
 | Polling | Refresh every | 30 min | How often Dragonfly is checked. Slower is gentler on their API. |
 
+## Removal
+
+Standard HA removal applies: **Settings → Devices & Services → Dragonfly
+Shipping → ⋮ → Delete**. Nothing is stored on Dragonfly's side.
+
 ## Sensors
 
 | Entity | Description |
@@ -93,13 +108,6 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 
 The carrier's own human-readable Dutch text is always available as `raw_status`.
 
-## Services
-
-| Service | Fields | Description |
-|---|---|---|
-| `dragonfly.track_parcel` | `tracking_code` | Start tracking a parcel |
-| `dragonfly.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
-
 ## Events
 
 The integration fires these on the event bus (also available as device triggers on the Dragonfly device):
@@ -111,6 +119,13 @@ The integration fires these on the event bus (also available as device triggers 
 | `dragonfly_parcel_delivery_time_changed` | The expected delivery window changes |
 
 Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up.
+
+## Services
+
+| Service | Fields | Description |
+|---|---|---|
+| `dragonfly.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `dragonfly.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
 
 ## Examples
 
@@ -141,6 +156,11 @@ This integration was originally created by [@HummelsTech](https://github.com/Hum
 ## Disclaimer
 
 This integration uses the same public tracking endpoint as the Dragonfly consumer website. It is not affiliated with, endorsed by, or supported by Dragonfly Shipping / Intelcom. Be gentle with the polling interval.
+
+## Contributing
+
+Pull requests and issues are welcome. Please open an issue before
+submitting a large change.
 
 ## License
 
