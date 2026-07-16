@@ -1,0 +1,14 @@
+{
+  "domain": "dragonfly",
+  "name": "Dragonfly Shipping",
+  "codeowners": ["@HummelsTech"],
+  "config_flow": true,
+  "documentation": "https://github.com/HummelsTech/ha-dragonfly",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/HummelsTech/ha-dragonfly/issues",
+  "quality_scale": "silver",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "1.0.0"
+}

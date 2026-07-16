@@ -1,0 +1,53 @@
+# Add a Dragonfly parcel straight from a dashboard — no diving into the options.
+#
+# The integration exposes two services:
+#   - dragonfly.track_parcel   (tracking_code)
+#   - dragonfly.untrack_parcel (tracking_code)
+#
+# This example wires a text field + a button on a Lovelace card to
+# dragonfly.track_parcel. It needs one helper and one script (below), then the card.
+
+# ---------------------------------------------------------------------------
+# 1) Helper — Settings → Devices & Services → Helpers → Create → Text,
+#    or in configuration.yaml:
+# ---------------------------------------------------------------------------
+input_text:
+  dragonfly_new_parcel:
+    name: New Dragonfly tracking code
+    max: 30
+
+# ---------------------------------------------------------------------------
+# 2) Script — reads the text field, tracks the parcel, then clears the field.
+#    Add to scripts.yaml (or Settings → Automations & Scenes → Scripts).
+# ---------------------------------------------------------------------------
+dragonfly_track_new_parcel:
+  alias: "Dragonfly: track the parcel in the input box"
+  sequence:
+    - condition: template
+      value_template: "{{ states('input_text.dragonfly_new_parcel') | trim != '' }}"
+    - action: dragonfly.track_parcel
+      data:
+        tracking_code: "{{ states('input_text.dragonfly_new_parcel') | trim }}"
+        
+        
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.dragonfly_new_parcel
+      data:
+        value: ""
+
+# ---------------------------------------------------------------------------
+# 3) Lovelace card — paste into a dashboard (Edit → raw config, or add a
+#    manual card). Type the number, press the button.
+# ---------------------------------------------------------------------------
+# type: entities
+# title: Track a Dragonfly parcel
+# entities:
+#   - entity: input_text.dragonfly_new_parcel
+#   - type: button
+#     name: Track
+#     icon: mdi:package-variant-plus
+#     action_name: Add
+#     tap_action:
+#       action: perform-action
+#       perform_action: script.dragonfly_track_new_parcel
