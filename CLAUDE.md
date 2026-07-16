@@ -108,8 +108,12 @@ payload; a first-ever `not_found` yields the pending placeholder
 `UpdateFailed` only when every fetch errored and nothing is cached,
 delivered-retention filter, `last_success_time` only stamped on a real
 success, first refresh in `__init__.py` before `async_forward_entry_setups`,
-and the three change events with cached `device_id` and first-refresh
-suppression. One Dragonfly-specific addition: `result.setdefault("tracking_id",
+and the four change events (`registered` / `status_changed` / `delivered` /
+`delivery_time_changed`) with cached `device_id` and first-refresh
+suppression — fired over the active + delivered set combined, so the
+terminal hop to ``DELIVERED`` fires the dedicated `_delivered` event (never
+also `_status_changed`) and a parcel first seen already-delivered fires
+nothing. One Dragonfly-specific addition: `result.setdefault("tracking_id",
 code)` after a fetch, so an edge payload without the field keeps its sensor
 key.
 

@@ -36,7 +36,7 @@ Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/h
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
 - Read-only **Deliveries** calendar with the expected delivery windows
 - `dragonfly.track_parcel` / `dragonfly.untrack_parcel` services, so a dashboard button can add a parcel
-- Events + device triggers for no-code automations (parcel registered, status changed, delivery time changed)
+- Events + device triggers for no-code automations (parcel registered, status changed, delivered, delivery time changed)
 - Opt-in per-parcel status history
 - Manual refresh button and a diagnostic last-update sensor
 
@@ -115,7 +115,8 @@ The integration fires these on the event bus (also available as device triggers 
 | Event | When |
 |---|---|
 | `dragonfly_parcel_registered` | A new parcel appears in the active list |
-| `dragonfly_parcel_status_changed` | A parcel's canonical status changes (`old_status` / `new_status` in the payload) |
+| `dragonfly_parcel_status_changed` | A parcel's canonical status changes (`old_status` / `new_status` in the payload), except the final hop to delivered |
+| `dragonfly_parcel_delivered` | A parcel is delivered |
 | `dragonfly_parcel_delivery_time_changed` | The expected delivery window changes |
 
 Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up.
