@@ -8,7 +8,7 @@
 
 A custom Home Assistant integration that tracks your [Dragonfly Shipping](https://dragonflyshipping.nl) parcels in the Netherlands. No account is needed — you enter the Track & Trace code yourself, just like on the Dragonfly website. Not even a postal code is required.
 
-Part of the same family as the [DHL](https://github.com/ha-parcel-integrations/ha-dhl-nl), [PostNL](https://github.com/ha-parcel-integrations/ha-postnl), [DPD](https://github.com/ha-parcel-integrations/ha-dpd) and [GLS](https://github.com/ha-parcel-integrations/ha-gls) integrations: it publishes the same canonical parcel format, statuses and events, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
+Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
 ## Contents
 
@@ -134,6 +134,13 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 Ready-to-paste automations and dashboard snippets live in [`examples/`](examples/), including tracking a new parcel straight from a dashboard.
 
+### Community Lovelace cards
+
+Third-party cards that work with this integration's sensors:
+
+- [jonisnet/hki-parcels-card](https://github.com/jonisnet/hki-parcels-card)
+- [klaptafel/ha-package-tracker-card](https://github.com/klaptafel/ha-package-tracker-card)
+
 ## Debugging
 
 ```yaml
@@ -149,8 +156,13 @@ logger:
 
 ## Related integrations
 
-- [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) — combines this integration with DHL, PostNL, DPD and GLS into one set of sensors
-- [DHL NL](https://github.com/ha-parcel-integrations/ha-dhl-nl) · [PostNL](https://github.com/ha-parcel-integrations/ha-postnl) · [DPD](https://github.com/ha-parcel-integrations/ha-dpd) · [GLS](https://github.com/ha-parcel-integrations/ha-gls)
+This integration is part of [**ha-parcel-integrations**](https://github.com/ha-parcel-integrations) — a family of Dutch
+parcel-carrier integrations that all publish the same canonical parcel format,
+statuses and events.
+
+- [**Parcel Aggregator**](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) rolls every installed carrier
+  up into one set of sensors.
+- Browse [the organisation](https://github.com/ha-parcel-integrations) for the current list of supported carriers.
 
 ## Credits
 
