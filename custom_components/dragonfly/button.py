@@ -2,14 +2,10 @@
 from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DragonflyConfigEntry
-from .const import DOMAIN
 from .device import build_device_info
 
 # A manual refresh is a single API round-trip per tracked parcel; HA's
@@ -36,6 +32,7 @@ class DragonflyRefreshButton(ButtonEntity):
     _attr_attribution = "Data provided by Dragonfly"
 
     def __init__(self, entry: DragonflyConfigEntry) -> None:
+        """Initialize the button."""
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_refresh"
         self._attr_device_info = build_device_info(entry)

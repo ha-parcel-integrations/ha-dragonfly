@@ -14,8 +14,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -109,6 +107,7 @@ class DragonflyIncomingParcelsSensor(
         async_add_entities: AddEntitiesCallback,
         known_barcodes: set[str] | None = None,
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry = entry
         self._async_add_entities = async_add_entities
@@ -118,10 +117,12 @@ class DragonflyIncomingParcelsSensor(
 
     @property
     def native_value(self) -> int:
+        """Return the native value of the sensor."""
         return len(self.coordinator.data or [])
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
         return {"parcels": self.coordinator.data or []}
 
     def _handle_coordinator_update(self) -> None:
@@ -161,6 +162,7 @@ class DragonflyParcelSensor(CoordinatorEntity[DragonflyCoordinator], SensorEntit
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry, barcode: str
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry = entry
         self._barcode = barcode
@@ -176,11 +178,13 @@ class DragonflyParcelSensor(CoordinatorEntity[DragonflyCoordinator], SensorEntit
 
     @property
     def native_value(self) -> str | None:
+        """Return the native value of the sensor."""
         parcel = self._get_parcel()
         return parcel.get("status") if parcel else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
         parcel = self._get_parcel()
         return dict(parcel) if parcel else {}
 
@@ -198,6 +202,7 @@ class DragonflyNextDeliverySensor(
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_next_delivery"
         self._attr_device_info = build_device_info(entry)
@@ -219,11 +224,13 @@ class DragonflyNextDeliverySensor(
 
     @property
     def native_value(self) -> datetime | None:
+        """Return the native value of the sensor."""
         moments = self._delivery_moments()
         return min(dt for dt, _ in moments) if moments else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
         moments = self._delivery_moments()
         if not moments:
             return {}
@@ -249,16 +256,19 @@ class DragonflyDeliveredParcelsSensor(
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_delivered_parcels"
         self._attr_device_info = build_device_info(entry)
 
     @property
     def native_value(self) -> int:
+        """Return the native value of the sensor."""
         return len(self.coordinator.delivered)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
         return {"parcels": self.coordinator.delivered}
 
 
@@ -276,10 +286,12 @@ class DragonflyLastUpdateSensor(
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_last_update"
         self._attr_device_info = build_device_info(entry)
 
     @property
     def native_value(self) -> datetime | None:
+        """Return the native value of the sensor."""
         return self.coordinator.last_success_time
