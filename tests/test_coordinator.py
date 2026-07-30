@@ -14,8 +14,8 @@ from custom_components.dragonfly.const import (
     DOMAIN,
     ParcelStatus,
 )
-from custom_components.dragonfly.coordinator import (
-    DragonflyCoordinator,
+from custom_components.dragonfly.coordinator import DragonflyCoordinator
+from custom_components.dragonfly.parcels import (
     build_history,
     map_event_status,
     map_parcel_status,
