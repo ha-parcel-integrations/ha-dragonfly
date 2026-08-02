@@ -20,7 +20,7 @@ you act in one of these areas:
 | consider "fixing" a lint/pattern the skill flags (poll interval, inline client) | *Deliberate skill divergences* — likely intentional, don't re-flag |
 | commit, bump, tag, release, or write release notes; add a feature without a test | *Workflow / Commits / Versioning / Testing* |
 
-**API mechanics live in `docs/api/` (local-only, gitignored)** — the endpoint,
+**API mechanics live in `carrier-research/api/dragonfly/` (private research repo)** — the endpoint,
 response envelope, payload→canonical mapping, the step/status vocabulary and the
 timestamp formats. Do not duplicate them here; this file is HA-integration
 decisions only.
@@ -88,5 +88,5 @@ python -m pytest tests/ --cov=custom_components.dragonfly
 
 Coverage must stay **above 95%** (silver `test-coverage` rule). Run before
 committing. README stays lean/installer-first (device triggers folded into
-**Events**); this file documents integration decisions, `docs/api/` documents the
+**Events**); this file documents integration decisions, `carrier-research/api/dragonfly/` documents the
 API. This repo is what the ha-carrier-template was originally extracted from.
