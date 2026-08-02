@@ -16,9 +16,14 @@ you act in one of these areas:
 | Before you … | Fetch `CONVENTIONS.md` § |
 |---|---|
 | touch entities, sensors, config/options flow, coordinator, diagnostics, translations | *Home Assistant developer docs* (its table points on to the canonical HA page — don't rely on memory) |
-| add/rename a parcel field, a `ParcelStatus`, or a bus event; change first-refresh or unmapped-status logging | *Parcel contract* (this repo implements it; below is only where Dragonfly deviates) |
+| add/rename a parcel field, a `ParcelStatus`, or a bus event; change first-refresh or unmapped-status logging | *Parcel contract* (this repo implements it; below is only integration-level deviations) |
 | consider "fixing" a lint/pattern the skill flags (poll interval, inline client) | *Deliberate skill divergences* — likely intentional, don't re-flag |
 | commit, bump, tag, release, or write release notes; add a feature without a test | *Workflow / Commits / Versioning / Testing* |
+
+**API mechanics live in `docs/api/` (local-only, gitignored)** — the endpoint,
+response envelope, payload→canonical mapping, the step/status vocabulary and the
+timestamp formats. Do not duplicate them here; this file is HA-integration
+decisions only.
 
 **Suite-wide tripwires, kept inline on purpose:**
 - **First refresh in `__init__.py`, before `async_forward_entry_setups`** — from
@@ -26,50 +31,6 @@ you act in one of these areas:
 - **Setup cleanup filters `domain == "sensor"` and excludes
   `non_parcel_unique_ids`** — else it deletes the button / diagnostic sensors.
   Per-parcel sensors are removed via the entity registry (self-removal races).
-
-## The API (reverse-engineered from the consumer site)
-
-- **Endpoint** `GET https://dragonflyshipping.nl/cfworker/v3/tracking/{code}/` —
-  the Cloudflare worker the site's tracking page calls. No auth, keyed on the
-  tracking code alone — **no postal code** (the big divergence from GLS).
-- **Always HTTP 200** with a JSON envelope: `{"success":true,"data":{"result":
-  {...}}}` on a hit; `{"success":false,"data":{"status":404,"code":"not_found",
-  ...}}` for unknown/not-yet-scanned → `None` (like GLS's 204). Any other failure
-  envelope raises `DragonflyApiError`.
-- **Result fields consumed** (verified against the site bundle
-  `itc.min.<version>.js`):
-  - `tracking_id` → canonical `barcode`.
-  - `last_status.step` drives the 4-segment progress bar: 1 registered, 2 in
-    transit, 3 out for delivery, 4 delivered; a **negative** step is the site's
-    exception state → `problem`. Unmapped non-negative → `unknown` + one-shot
-    WARNING (`_unmapped_steps_logged`). `status`/`statusCode` are numeric but
-    mapping stays **step-based** on purpose.
-  - `last_status.isDelivered` (authoritative; `step == 4` fallback), `.timestamp`
-    (`delivered_at`), `.task_type` (`last_mile_pickup` = driver-comes-to-you →
-    `pickup: true`; Dragonfly has **no parcel-shop network**, so `at_pickup_point`
-    never occurs and the GLS `en_route_to_parcel_shop`/`awaiting_pickup` sensors
-    were dropped).
-  - ETA gating: the site hides the ETA when `!showEta || etaType == "none"`;
-    `normalize_parcel` gates `planned_from/to` the same way. `public_eta.from/.to`
-    is the window. **Live-verified caveat (2026-07):** a real out-for-delivery
-    parcel had `public_eta: null` while top-level `eta` / `buffered_eta` held the
-    estimate — those are the fallback; a `buffered_eta == eta` is a point estimate
-    → `planned_to: None`.
-  - **Timestamps are epoch milliseconds** on `last_status.timestamp` and every
-    `status_list[].timestamp`; ETA fields are ISO strings. `_to_iso_timestamp`
-    normalises both to ISO — do not feed raw API timestamps into
-    `delivered_at`/history.
-  - `status_list[]` is the history timeline (`{step, timestamp, labels}`) in the
-    same response, so opt-in history costs no extra request.
-  - **Labels**: `labels.shortLabel.{nl,en}` (new) or `shortLabel.{nl,en}`
-    (legacy), checked in that order (`status_label()`); Dutch preferred, English
-    fallback. `[link url]text[/link]` markup is stripped to inner text; `{token}`
-    placeholders filled from `package_location.address`, unknown tokens stay
-    literal.
-  - `client_code` → `sender` (best available signal); `driver_name` stays in
-    `raw`. `weight`/`dimensions` always `None` (not provided).
-  - Tracking-code normalisation mirrors the site: uppercase, strip non-`A-Z0-9`
-    (`normalize_tracking_code`); validation `^[A-Z0-9]{6,30}$`.
 
 ## Hub model: single instance, zero-input setup
 
@@ -81,32 +42,35 @@ you act in one of these areas:
 - **Tracked parcels in `entry.options[CONF_PARCELS]`** as `{tracking_code}` dicts
   (dicts, not strings, so future per-parcel fields need no migration). Added three
   ways (options flow, `dragonfly.track_parcel`/`untrack_parcel` services — no
-  postal-code field, unlike GLS, a Lovelace button). Options flow is one sectioned
-  form (`parcels`/`delivered`/`history`/`polling`), remove-then-add order.
+  postal-code field, unlike GLS — and a Lovelace button). Options flow is one
+  sectioned form (`parcels`/`delivered`/`history`/`polling`), remove-then-add
+  order.
 - **Option changes apply live, no reload** — update listener retunes
   `coordinator.update_interval` + `async_request_refresh()`; do NOT switch to
   `async_schedule_reload`. Services are removed on unload unconditionally (single
   instance — no other-hubs check needed, unlike GLS).
 
-## Coordinator (mirror GLS, adapted)
+## Coordinator behaviour (mirror GLS, adapted)
 
-Concurrent per-parcel `asyncio.gather`; `_raw_cache` keyed on tracking code
-(transient error / `not_found` blip keeps the last good payload; a first-ever
-`not_found` yields the pending placeholder `{"tracking_id":code,"last_status":
-None}` → `unknown`); `UpdateFailed` only when every fetch errored and nothing is
-cached; delivered-retention filter; `last_success_time` stamped only on a real
-success. Four change events (`registered`/`status_changed`/`delivered`/
-`delivery_time_changed`) with cached `device_id` and first-refresh suppression,
-over active+delivered combined (terminal hop → only `_delivered`). One
-Dragonfly-specific bit: `result.setdefault("tracking_id", code)` after a fetch so
-an edge payload without the field keeps its sensor key.
+Concurrent per-parcel `asyncio.gather`; **`_raw_cache`** keyed on tracking code so
+a transient error or an unknown-code blip keeps the last good payload, and a
+first-ever unknown code yields a pending placeholder (status `unknown`) rather
+than dropping the parcel; **`UpdateFailed` only when every fetch errored and
+nothing is cached**; delivered-retention filter (display-only); **`last_success_time`
+stamped only on a real success** (a poll served entirely from cache is not one —
+the diagnostic sensor exists to reveal that). Four change events
+(`registered`/`status_changed`/`delivered`/`delivery_time_changed`) with cached
+`device_id` and first-refresh suppression, over active+delivered combined
+(terminal hop → only `_delivered`). History is opt-in, default off, and costs no
+extra request (it ships in the same response).
 
 ## Entities
 
 `sensor` (incoming summary + per-parcel + next_delivery + delivered_parcels +
 diagnostic `last_update`), `button` (refresh), `calendar` (deliveries, read-only,
-enabled by default), device triggers. **No pickup-point sensors** (see `task_type`
-above).
+enabled by default), device triggers. **No pickup-point sensors** — Dragonfly has
+no parcel-shop network, so `at_pickup_point` never occurs and GLS's
+`en_route_to_parcel_shop` / `awaiting_pickup` sensors were dropped.
 
 ## Tests on Windows
 
@@ -124,5 +88,5 @@ python -m pytest tests/ --cov=custom_components.dragonfly
 
 Coverage must stay **above 95%** (silver `test-coverage` rule). Run before
 committing. README stays lean/installer-first (device triggers folded into
-**Events**); this file documents everything. This repo is what the
-ha-carrier-template was originally extracted from.
+**Events**); this file documents integration decisions, `docs/api/` documents the
+API. This repo is what the ha-carrier-template was originally extracted from.
