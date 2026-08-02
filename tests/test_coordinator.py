@@ -24,57 +24,7 @@ from custom_components.dragonfly.parcels import (
     status_label,
 )
 
-
-def _status(step: int, ts: str, nl: str, en: str) -> dict:
-    return {
-        "status": f"STATUS_{step}",
-        "statusCode": f"CODE_{step}",
-        "step": step,
-        "timestamp": ts,
-        "labels": {
-            "shortLabel": {"nl": nl, "en": en},
-            "longLabel": {"nl": f"{nl}.", "en": f"{en}."},
-        },
-    }
-
-
-def _delivered_sample(code: str = "INTLCMB2C000123456") -> dict:
-    """A representative Dragonfly tracking result for a delivered parcel."""
-    last = _status(4, "2026-04-29T13:12:42Z", "Afgeleverd", "Delivered")
-    last.update({"isDelivered": True, "showEta": False, "etaType": "none",
-                 "task_type": "last_mile_delivery"})
-    return {
-        "tracking_id": code,
-        "client_code": "ACME",
-        "driver_name": "Piet",
-        "is_green_task": False,
-        "last_status": last,
-        "public_eta": {"from": None, "to": None, "min": 8, "max": 22},
-        "status_list": [
-            _status(4, "2026-04-29T13:12:42Z", "Afgeleverd", "Delivered"),
-            _status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery"),
-            _status(2, "2026-04-28T15:52:17Z", "In het sorteercentrum", "At the sorting facility"),
-            _status(1, "2026-04-27T23:03:58Z", "Zending ontvangen", "Parcel received"),
-        ],
-    }
-
-
-def _active_sample(code: str = "INTLCMB2C000999999") -> dict:
-    """An out-for-delivery parcel with an ETA window."""
-    sample = _delivered_sample(code)
-    last = _status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery")
-    last.update({"isDelivered": False, "showEta": True, "etaType": "time",
-                 "task_type": "last_mile_delivery"})
-    sample["last_status"] = last
-    sample["public_eta"] = {
-        "from": "2026-04-29T13:00:00Z",
-        "to": "2026-04-29T15:00:00Z",
-        "min": 8,
-        "max": 22,
-    }
-    sample["status_list"] = sample["status_list"][1:]
-    return sample
-
+from .payloads import active_sample, delivered_sample, status
 
 # ---------------------------------------------------------------------------
 # map_parcel_status / map_event_status
@@ -126,13 +76,13 @@ def test_unmapped_step_warns_only_once():
 
 
 def test_status_label_prefers_dutch():
-    status = _status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery")
-    assert status_label(status) == "Bij de bezorger"
+    entry = status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery")
+    assert status_label(entry) == "Bij de bezorger"
 
 
 def test_status_label_falls_back_to_english():
-    status = _status(3, "2026-04-29T08:46:00Z", "", "Out for delivery")
-    assert status_label(status) == "Out for delivery"
+    entry = status(3, "2026-04-29T08:46:00Z", "", "Out for delivery")
+    assert status_label(entry) == "Out for delivery"
 
 
 def test_status_label_legacy_top_level_labels():
@@ -172,7 +122,7 @@ def test_status_label_keeps_unknown_tokens():
 
 
 def test_build_history_maps_status_list_oldest_to_newest():
-    history = build_history(_delivered_sample()["status_list"])
+    history = build_history(delivered_sample()["status_list"])
     assert len(history) == 4
     assert history[0]["raw_status"] == "Zending ontvangen"
     assert history[0]["status"] == ParcelStatus.REGISTERED
@@ -181,7 +131,7 @@ def test_build_history_maps_status_list_oldest_to_newest():
 
 def test_build_history_caps_to_max_events():
     status_list = [
-        _status(2, f"2026-04-{d:02d}T10:00:00Z", "x", "x") for d in range(1, 26)
+        status(2, f"2026-04-{d:02d}T10:00:00Z", "x", "x") for d in range(1, 26)
     ]
     assert len(build_history(status_list, max_events=20)) == 20
 
@@ -194,8 +144,8 @@ def test_build_history_handles_missing_and_empty():
 
 def test_build_history_keeps_unparseable_timestamp_last():
     status_list = [
-        _status(1, "2026-04-24T10:00:00Z", "ok", "ok"),
-        _status(2, "not-a-date", "raar", "weird"),
+        status(1, "2026-04-24T10:00:00Z", "ok", "ok"),
+        status(2, "not-a-date", "raar", "weird"),
     ]
     history = build_history(status_list)
     assert len(history) == 2
@@ -208,7 +158,7 @@ def test_build_history_keeps_unparseable_timestamp_last():
 
 
 def test_normalize_delivered_parcel():
-    parcel = normalize_parcel(_delivered_sample())
+    parcel = normalize_parcel(delivered_sample())
     assert parcel["carrier"] == "Dragonfly"
     assert parcel["barcode"] == "INTLCMB2C000123456"
     assert parcel["sender"] == "ACME"
@@ -226,13 +176,13 @@ def test_normalize_delivered_parcel():
 
 
 def test_normalize_history_opt_in():
-    parcel = normalize_parcel(_delivered_sample(), include_history=True)
+    parcel = normalize_parcel(delivered_sample(), include_history=True)
     assert len(parcel["history"]) == 4
     assert parcel["history"][0]["status"] == ParcelStatus.REGISTERED
 
 
 def test_normalize_active_parcel_has_window():
-    parcel = normalize_parcel(_active_sample())
+    parcel = normalize_parcel(active_sample())
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
     assert parcel["delivered"] is False
     assert parcel["planned_from"] == "2026-04-29T13:00:00Z"
@@ -241,12 +191,12 @@ def test_normalize_active_parcel_has_window():
 
 def test_normalize_hides_eta_when_site_would(hass):
     """showEta false or etaType none suppresses the window, like the site."""
-    sample = _active_sample()
+    sample = active_sample()
     sample["last_status"]["showEta"] = False
     parcel = normalize_parcel(sample)
     assert parcel["planned_from"] is None
 
-    sample = _active_sample()
+    sample = active_sample()
     sample["last_status"]["etaType"] = "none"
     parcel = normalize_parcel(sample)
     assert parcel["planned_from"] is None
@@ -261,14 +211,14 @@ def test_normalize_pending_placeholder():
 
 
 def test_normalize_delivered_via_flag_without_step():
-    raw = _delivered_sample()
+    raw = delivered_sample()
     raw["last_status"]["step"] = None
     parcel = normalize_parcel(raw)
     assert parcel["delivered"] is True  # last_status.isDelivered
 
 
 def test_normalize_pickup_task():
-    raw = _active_sample()
+    raw = active_sample()
     raw["last_status"]["task_type"] = "last_mile_pickup"
     parcel = normalize_parcel(raw)
     assert parcel["pickup"] is True
@@ -276,7 +226,7 @@ def test_normalize_pickup_task():
 
 
 def test_normalize_missing_client_code_is_none():
-    raw = _active_sample()
+    raw = active_sample()
     raw["client_code"] = ""
     parcel = normalize_parcel(raw)
     assert parcel["sender"] is None
@@ -333,14 +283,14 @@ def test_normalize_real_payload_epoch_ms_and_eta_fallback():
 
 
 def test_normalize_delivered_at_converts_epoch_ms():
-    raw = _delivered_sample()
+    raw = delivered_sample()
     raw["last_status"]["timestamp"] = 1784203767167
     parcel = normalize_parcel(raw)
     assert parcel["delivered_at"] == "2026-07-16T12:09:27.167000+00:00"
 
 
 def test_normalize_distinct_buffered_eta_becomes_window_end():
-    raw = _active_sample()
+    raw = active_sample()
     raw["public_eta"] = None
     raw["eta"] = "2026-07-16T16:00:00Z"
     raw["buffered_eta"] = "2026-07-16T18:00:00Z"
@@ -391,7 +341,7 @@ async def test_update_merges_multiple_parcels(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.side_effect = lambda code: (
-        _active_sample() if code == "INTLCMB2C000999999" else _delivered_sample()
+        active_sample() if code == "INTLCMB2C000999999" else delivered_sample()
     )
     coordinator = DragonflyCoordinator(hass, client, entry)
 
@@ -421,7 +371,7 @@ async def test_update_keeps_cached_on_error(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = _delivered_sample()
+    client.async_get_parcel.return_value = delivered_sample()
     coordinator = DragonflyCoordinator(hass, client, entry)
     await coordinator._async_update_data()  # populates cache
 
@@ -450,7 +400,7 @@ async def test_update_skips_items_missing_fields(hass):
     ])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = _delivered_sample()
+    client.async_get_parcel.return_value = delivered_sample()
     coordinator = DragonflyCoordinator(hass, client, entry)
 
     await coordinator._async_update_data()
@@ -461,7 +411,7 @@ async def test_update_backfills_missing_tracking_id(hass):
     """An edge payload without tracking_id keeps the requested code as key."""
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCM424242"}])
     entry.add_to_hass(hass)
-    sample = _active_sample()
+    sample = active_sample()
     del sample["tracking_id"]
     client = AsyncMock()
     client.async_get_parcel.return_value = sample
@@ -486,11 +436,11 @@ async def test_update_event_carries_device_id(hass):
     events = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
-    in_transit = _active_sample("INTLCMB2C000999999")
+    in_transit = active_sample("INTLCMB2C000999999")
     in_transit["last_status"]["step"] = 2
     client.async_get_parcel.return_value = in_transit
     await coordinator._async_update_data()
-    client.async_get_parcel.return_value = _active_sample("INTLCMB2C000999999")
+    client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
     await coordinator._async_update_data()
     await hass.async_block_till_done()
 
@@ -507,13 +457,13 @@ async def test_update_fires_status_changed_event(hass):
     hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
     # First refresh: in_transit (step 2), events suppressed.
-    in_transit = _active_sample()
+    in_transit = active_sample()
     in_transit["last_status"]["step"] = 2
     client.async_get_parcel.return_value = in_transit
     await coordinator._async_update_data()
 
     # Second refresh: out_for_delivery (step 3) — still active, status changed.
-    client.async_get_parcel.return_value = _active_sample()
+    client.async_get_parcel.return_value = active_sample()
     await coordinator._async_update_data()
     await hass.async_block_till_done()
 
@@ -533,9 +483,9 @@ async def test_update_fires_delivered_event_not_status_changed(hass):
     hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
     hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: changed.append(e))
 
-    client.async_get_parcel.return_value = _active_sample("INTLCMB2C000999999")
+    client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
     await coordinator._async_update_data()
-    client.async_get_parcel.return_value = _delivered_sample("INTLCMB2C000999999")
+    client.async_get_parcel.return_value = delivered_sample("INTLCMB2C000999999")
     await coordinator._async_update_data()
     await hass.async_block_till_done()
 
@@ -551,7 +501,7 @@ async def test_no_events_for_parcel_first_seen_delivered(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.side_effect = lambda code: (
-        _active_sample(code) if code == "INTLCMB2C000999999" else _delivered_sample(code)
+        active_sample(code) if code == "INTLCMB2C000999999" else delivered_sample(code)
     )
     coordinator = DragonflyCoordinator(hass, client, entry)
 
@@ -581,7 +531,7 @@ async def test_update_fires_registered_event_for_new_parcel(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = _active_sample("INTLCMB2C000999999")
+    client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
     coordinator = DragonflyCoordinator(hass, client, entry)
 
     events = []
@@ -599,7 +549,7 @@ async def test_update_fires_registered_event_for_new_parcel(hass):
             ],
         },
     )
-    client.async_get_parcel.side_effect = lambda code: _active_sample(code)
+    client.async_get_parcel.side_effect = lambda code: active_sample(code)
     await coordinator._async_update_data()
     await hass.async_block_till_done()
 
@@ -618,10 +568,10 @@ async def test_update_fires_delivery_time_changed_event(hass):
         f"{DOMAIN}_parcel_delivery_time_changed", lambda e: events.append(e)
     )
 
-    client.async_get_parcel.return_value = _active_sample()
+    client.async_get_parcel.return_value = active_sample()
     await coordinator._async_update_data()  # first refresh: suppressed
 
-    moved = _active_sample()
+    moved = active_sample()
     moved["public_eta"]["from"] = "2026-04-29T16:00:00Z"
     moved["public_eta"]["to"] = "2026-04-29T18:00:00Z"
     client.async_get_parcel.return_value = moved
@@ -637,7 +587,7 @@ async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = _delivered_sample()
+    client.async_get_parcel.return_value = delivered_sample()
     coordinator = DragonflyCoordinator(hass, client, entry)
     await coordinator._async_update_data()
     stamp = coordinator.last_success_time
@@ -683,7 +633,7 @@ async def test_update_prunes_cache_for_untracked_parcels(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = _delivered_sample()
+    client.async_get_parcel.return_value = delivered_sample()
     coordinator = DragonflyCoordinator(hass, client, entry)
     coordinator._raw_cache["GONE"] = {"tracking_id": "GONE", "last_status": None}
 
@@ -711,7 +661,7 @@ async def test_update_fetches_parcels_concurrently(hass):
         peak = max(peak, in_flight)
         await asyncio.sleep(0)
         in_flight -= 1
-        return _active_sample(code)
+        return active_sample(code)
 
     client = AsyncMock()
     client.async_get_parcel.side_effect = _slow_fetch

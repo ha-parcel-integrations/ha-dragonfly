@@ -12,28 +12,7 @@ from custom_components.dragonfly.const import (
     DOMAIN,
 )
 
-
-def _sample(code: str = "INTLCMB2C000123456") -> dict:
-    return {
-        "tracking_id": code,
-        "client_code": "ACME",
-        "last_status": {
-            "step": 3,
-            "timestamp": "2026-04-29T08:46:00Z",
-            "isDelivered": False,
-            "showEta": True,
-            "etaType": "time",
-            "labels": {"shortLabel": {"nl": "Bij de bezorger"}},
-        },
-        "public_eta": {"from": "2026-05-01T10:00:00Z", "to": None},
-        "status_list": [
-            {
-                "step": 1,
-                "timestamp": "2026-04-28T10:00:00Z",
-                "labels": {"shortLabel": {"nl": "Zending ontvangen"}},
-            }
-        ],
-    }
+from .payloads import minimal_sample
 
 
 async def test_setup_and_unload(hass):
@@ -46,7 +25,7 @@ async def test_setup_and_unload(hass):
 
     with patch(
         "custom_components.dragonfly.api.DragonflyApiClient.async_get_parcel",
-        new=AsyncMock(return_value=_sample()),
+        new=AsyncMock(return_value=minimal_sample()),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -101,7 +80,7 @@ async def test_per_parcel_sensor_spawn_and_remove(hass):
     )
     entry.add_to_hass(hass)
 
-    mock = AsyncMock(return_value=_sample())
+    mock = AsyncMock(return_value=minimal_sample())
     with patch("custom_components.dragonfly.api.DragonflyApiClient.async_get_parcel", new=mock):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -113,7 +92,7 @@ async def test_per_parcel_sensor_spawn_and_remove(hass):
 
         # The next poll returns a different tracking code: the summary sensor
         # spawns a new per-parcel sensor and removes the stale one.
-        mock.return_value = _sample("INTLCMB2C000222222")
+        mock.return_value = minimal_sample("INTLCMB2C000222222")
         await entry.runtime_data.coordinator.async_request_refresh()
         await hass.async_block_till_done()
 
@@ -137,12 +116,12 @@ async def test_options_update_applies_live_without_reload(hass):
     )
     entry.add_to_hass(hass)
 
-    mock = AsyncMock(return_value=_sample())
+    mock = AsyncMock(return_value=minimal_sample())
     with patch("custom_components.dragonfly.api.DragonflyApiClient.async_get_parcel", new=mock):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-        mock.side_effect = lambda code: _sample(code)
+        mock.side_effect = lambda code: minimal_sample(code)
         hass.config_entries.async_update_entry(
             entry,
             options={
