@@ -221,9 +221,13 @@ def _tracking_url(tracking_code: str | None) -> str | None:
 def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     """Return a carrier-agnostic parcel dict with the original payload under ``raw``.
 
-    The expected delivery window is ``public_eta.from``/``public_eta.to``
-    (only surfaced while the parcel is on its way and the site itself would
-    show an ETA: ``last_status.showEta`` true and ``etaType`` not ``none``).
+    The expected delivery window is ``public_eta.from``/``public_eta.to``,
+    falling back to the top-level ``eta``/``buffered_eta`` pair — surfaced
+    whenever the API has a value, regardless of ``last_status.showEta``
+    (that flag only gates the *consumer site's* display, e.g. a day-level
+    estimate while still in transit; HA users want it anyway). The window
+    end prefers ``live_buffered_eta`` — the courier's GPS-driven revision —
+    over the static ``buffered_eta`` when the API has one.
 
     ``history`` is the optional per-parcel status timeline — opt-in, default
     off (``None``), kept identical to the other suite carriers. Dragonfly
@@ -237,16 +241,19 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     # The delivery window: ``public_eta.from/to`` when the worker fills it,
     # otherwise the top-level ``eta`` / ``buffered_eta`` pair (verified live:
     # an out-for-delivery parcel carried ``public_eta: null`` but a concrete
-    # ``eta``). A ``buffered_eta`` equal to the ETA is a point estimate, not
-    # a window — collapse it to ``planned_to: None``.
+    # ``eta``). On live payloads ``buffered_eta`` is consistently the exact
+    # same instant as ``eta`` (a zero-width "buffer"), so left on its own it
+    # never actually produces a window end — ``live_buffered_eta``, the
+    # courier's GPS-driven revision of the estimate, is the field that does
+    # (live-verified: it diverged from both ``eta`` and ``buffered_eta`` by
+    # over an hour on a delivered parcel), so it takes priority when present.
     public_eta = raw.get("public_eta") or {}
-    show_eta = bool(last_status.get("showEta")) and last_status.get("etaType") != "none"
     eta_from = _to_iso_timestamp(public_eta.get("from") or raw.get("eta"))
-    eta_to = _to_iso_timestamp(public_eta.get("to") or raw.get("buffered_eta"))
+    eta_to = _to_iso_timestamp(
+        raw.get("live_buffered_eta") or public_eta.get("to") or raw.get("buffered_eta")
+    )
     if eta_from and eta_to and _parse_iso(eta_to) == _parse_iso(eta_from):
         eta_to = None
-    if not show_eta:
-        eta_from = eta_to = None
 
     # ``last_mile_pickup`` is a driver-comes-to-you task (e.g. a return
     # pickup), not a pickup-point delivery — Dragonfly delivers to the door

@@ -189,17 +189,23 @@ def test_normalize_active_parcel_has_window():
     assert parcel["planned_to"] == "2026-04-29T15:00:00Z"
 
 
-def test_normalize_hides_eta_when_site_would(hass):
-    """showEta false or etaType none suppresses the window, like the site."""
+def test_normalize_surfaces_eta_even_when_site_would_hide_it(hass):
+    """``showEta``/``etaType`` only gate the consumer site's own display —
+
+    a day-level estimate while still in transit (live-verified: a real
+    in-transit parcel carried ``showEta: false``, ``etaType: "none"`` and a
+    concrete next-day ``eta``) is still useful to an HA user, so it is
+    surfaced regardless.
+    """
     sample = active_sample()
     sample["last_status"]["showEta"] = False
     parcel = normalize_parcel(sample)
-    assert parcel["planned_from"] is None
+    assert parcel["planned_from"] == "2026-04-29T13:00:00Z"
 
     sample = active_sample()
     sample["last_status"]["etaType"] = "none"
     parcel = normalize_parcel(sample)
-    assert parcel["planned_from"] is None
+    assert parcel["planned_from"] == "2026-04-29T13:00:00Z"
 
 
 def test_normalize_pending_placeholder():
@@ -296,6 +302,52 @@ def test_normalize_distinct_buffered_eta_becomes_window_end():
     raw["buffered_eta"] = "2026-07-16T18:00:00Z"
     parcel = normalize_parcel(raw)
     assert parcel["planned_from"] == "2026-07-16T16:00:00Z"
+    assert parcel["planned_to"] == "2026-07-16T18:00:00Z"
+
+
+def test_normalize_live_buffered_eta_takes_priority_over_buffered_eta():
+    """Modeled on a live parcel (2026-08-08): eta/buffered_eta stayed the
+
+    exact same instant throughout, so only ``live_buffered_eta`` — the
+    courier's GPS-driven revision, populated over an hour later than the
+    static estimate — ever produced a real window end.
+    """
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["eta"] = "2026-08-08T16:37:51.000000+02:00"
+    raw["buffered_eta"] = "2026-08-08T14:37:51.000Z"
+    raw["live_buffered_eta"] = "2026-08-08T15:50:24.000Z"
+    parcel = normalize_parcel(raw)
+    assert parcel["planned_from"] == "2026-08-08T16:37:51.000000+02:00"
+    assert parcel["planned_to"] == "2026-08-08T15:50:24.000Z"
+
+
+def test_normalize_in_transit_day_level_eta_is_surfaced():
+    """Modeled on a live in-transit parcel (2026-08-08): ``showEta: false``,
+
+    ``etaType: "none"``, a next-day-midnight ``eta`` and a ``buffered_eta``
+    at the same instant. The site hides this day-level estimate; HA still
+    surfaces ``planned_from`` (``planned_to`` collapses since the two
+    timestamps coincide).
+    """
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["last_status"]["showEta"] = False
+    raw["last_status"]["etaType"] = "none"
+    raw["eta"] = "2026-08-09T00:00:00.000000+02:00"
+    raw["buffered_eta"] = "2026-08-08T22:00:00.000Z"
+    parcel = normalize_parcel(raw)
+    assert parcel["planned_from"] == "2026-08-09T00:00:00.000000+02:00"
+    assert parcel["planned_to"] is None
+
+
+def test_normalize_live_buffered_eta_absent_falls_back_to_buffered_eta():
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["live_buffered_eta"] = None
+    raw["eta"] = "2026-07-16T16:00:00Z"
+    raw["buffered_eta"] = "2026-07-16T18:00:00Z"
+    parcel = normalize_parcel(raw)
     assert parcel["planned_to"] == "2026-07-16T18:00:00Z"
 
 
