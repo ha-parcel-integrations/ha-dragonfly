@@ -72,14 +72,6 @@ enabled by default), device triggers. **No pickup-point sensors** — Dragonfly 
 no parcel-shop network, so `at_pickup_point` never occurs and GLS's
 `en_route_to_parcel_shop` / `awaiting_pickup` sensors were dropped.
 
-## Tests on Windows
-
-`tests/conftest.py` carries two Windows-only shims (no-ops elsewhere):
-`disable_socket` is neutralised (Windows event loops need AF_INET socketpairs;
-the 127.0.0.1 allowlist stays) and HA's `AsyncResolver` is swapped for
-`ThreadedResolver` (aiodns refuses the Proactor loop). Do not remove them
-"because CI passes" — CI is Linux, development is Windows.
-
 ## Running tests
 
 ```
