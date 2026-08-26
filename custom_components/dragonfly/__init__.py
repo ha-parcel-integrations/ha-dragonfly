@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import DragonflyApiClient
-from .const import PLATFORMS
+from .const import CONF_COUNTRY, COUNTRIES, DEFAULT_COUNTRY, PLATFORMS
 from .coordinator import DragonflyCoordinator, _refresh_interval
 from .services import async_setup_services, async_unload_services
 
@@ -29,9 +29,14 @@ type DragonflyConfigEntry = ConfigEntry[DragonflyData]
 
 async def async_setup_entry(hass: HomeAssistant, entry: DragonflyConfigEntry) -> bool:
     """Set up Dragonfly from a config entry."""
+    # The endpoint host comes from the hub's country; entries created before
+    # this option existed default to the Netherlands (the original site).
+    country = entry.options.get(CONF_COUNTRY, DEFAULT_COUNTRY)
+    host = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])["host"]
+
     # No auth: Dragonfly tracking is public, so the HA-managed session is fine.
-    client = DragonflyApiClient(async_get_clientsession(hass))
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    client = DragonflyApiClient(async_get_clientsession(hass), host=host)
+    coordinator = DragonflyCoordinator(hass, client, entry, country=country)
 
     # Fetch initial data here, before forwarding to platforms. Raising
     # ConfigEntryNotReady from a forwarded platform is too late for HA to catch

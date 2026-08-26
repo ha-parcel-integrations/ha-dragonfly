@@ -17,12 +17,15 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
     CONF_REFRESH_INTERVAL,
     CONF_TRACKING_CODE,
+    COUNTRIES,
+    DEFAULT_COUNTRY,
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
     DEFAULT_INCLUDE_HISTORY,
@@ -38,6 +41,19 @@ _LOGGER = logging.getLogger(__name__)
 # everything else before querying, so we normalise the same way and accept a
 # generous length range.
 _TRACKING_CODE_RE = re.compile(r"^[A-Z0-9]{6,30}$")
+
+# First-run form: pick which country's Dragonfly backend this hub talks to.
+# Selector option values double as hassfest translation keys, which must be
+# lowercase — COUNTRIES/CONF_COUNTRY's actual stored value stays upper-case
+# everywhere else, so this list is a display-only lowercase mirror.
+# async_step_user upper-cases the submitted value right back before using it.
+_COUNTRY_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=[code.lower() for code in COUNTRIES],
+        translation_key=CONF_COUNTRY,
+        mode=selector.SelectSelectorMode.DROPDOWN,
+    )
+)
 
 
 def normalize_tracking_code(value: str) -> str:
@@ -86,26 +102,43 @@ class DragonflyConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create the Dragonfly hub — single instance, no input needed.
+        """Create the Dragonfly hub — single instance, one country.
 
         Dragonfly tracking is keyed on the tracking code alone (no account,
-        no postal code), so there is nothing to ask at setup: the entry is
-        created straight away and parcels are added afterwards via the
-        options flow, the ``dragonfly.track_parcel`` service or a dashboard
-        button. ``single_config_entry`` in the manifest enforces one hub.
+        no postal code), so the only thing setup needs is which country's
+        backend to use — NL, AU or CA all run the same cfworker platform on
+        their own domain. Parcels are added afterwards via the options flow,
+        the ``dragonfly.track_parcel`` service or a dashboard button.
+        ``single_config_entry`` in the manifest enforces one hub; the country
+        is not editable afterward (tracked parcels are keyed to one backend).
         """
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
-        return self.async_create_entry(
-            title="Dragonfly",
-            data={},
-            options={
-                CONF_PARCELS: [],
-                CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
-                CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
-                CONF_REFRESH_INTERVAL: DEFAULT_REFRESH_INTERVAL,
-                CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
-            },
+
+        if user_input is not None:
+            country = user_input[CONF_COUNTRY].upper()
+            return self.async_create_entry(
+                title=f"Dragonfly ({country})",
+                data={},
+                options={
+                    CONF_COUNTRY: country,
+                    CONF_PARCELS: [],
+                    CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+                    CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
+                    CONF_REFRESH_INTERVAL: DEFAULT_REFRESH_INTERVAL,
+                    CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_COUNTRY, default=DEFAULT_COUNTRY.lower()
+                    ): _COUNTRY_SELECTOR,
+                }
+            ),
         )
 
 
@@ -148,6 +181,14 @@ class DragonflyOptionsFlowHandler(OptionsFlow):
                 return self.async_create_entry(
                     title="",
                     data={
+                        # An options flow's `data` replaces `entry.options`
+                        # wholesale rather than merging into it — omitting the
+                        # country here would silently reset the hub to NL the
+                        # first time a parcel was added (same bug as
+                        # ha-parcel-integrations/ha-gls#2).
+                        CONF_COUNTRY: self.config_entry.options.get(
+                            CONF_COUNTRY, DEFAULT_COUNTRY
+                        ),
                         CONF_PARCELS: parcels,
                         CONF_DELIVERED_FILTER_TYPE: delivered_section[
                             CONF_DELIVERED_FILTER_TYPE

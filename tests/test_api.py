@@ -38,7 +38,7 @@ async def test_get_parcel_returns_result_on_success():
     session = _session_returning(
         200, _success_envelope({"tracking_id": "INTLCM123", "last_status": {"step": 4}})
     )
-    client = DragonflyApiClient(session)
+    client = DragonflyApiClient(session, host="dragonflyshipping.nl")
     parcel = await client.async_get_parcel("INTLCM123")
     assert parcel["tracking_id"] == "INTLCM123"
     # the tracking code ends up in the URL
@@ -46,40 +46,53 @@ async def test_get_parcel_returns_result_on_success():
     assert "cfworker/v3/tracking/INTLCM123/" in url
 
 
+async def test_get_parcel_uses_the_configured_country_host():
+    """AU/CA hubs hit their own domain, not the NL one."""
+    session = _session_returning(
+        200, _success_envelope({"tracking_id": "INTLCM123", "last_status": {"step": 4}})
+    )
+    client = DragonflyApiClient(session, host="dragonflyshipping.com.au")
+    await client.async_get_parcel("INTLCM123")
+    url = session.get.call_args[0][0]
+    assert url.startswith("https://dragonflyshipping.com.au/cfworker/v3/tracking/")
+
+
 async def test_get_parcel_returns_none_on_not_found():
-    client = DragonflyApiClient(_session_returning(200, _not_found_envelope()))
+    client = DragonflyApiClient(_session_returning(200, _not_found_envelope()), host="dragonflyshipping.nl")
     assert await client.async_get_parcel("UNKNOWN123") is None
 
 
 async def test_get_parcel_returns_none_on_hollow_success():
     """A success envelope without a result dict is treated as unknown."""
     client = DragonflyApiClient(
-        _session_returning(200, {"success": True, "data": {"result": None}})
+        _session_returning(200, {"success": True, "data": {"result": None}}),
+        host="dragonflyshipping.nl",
     )
     assert await client.async_get_parcel("INTLCM123") is None
 
 
 async def test_get_parcel_raises_on_error_status():
-    client = DragonflyApiClient(_session_returning(500, {}))
+    client = DragonflyApiClient(_session_returning(500, {}), host="dragonflyshipping.nl")
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
 
 async def test_get_parcel_raises_on_unparseable_body():
-    client = DragonflyApiClient(_session_returning(200, "not json"))
+    client = DragonflyApiClient(_session_returning(200, "not json"), host="dragonflyshipping.nl")
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
 
 async def test_get_parcel_raises_on_non_object_body():
-    client = DragonflyApiClient(_session_returning(200, ["not", "a", "dict"]))
+    client = DragonflyApiClient(_session_returning(200, ["not", "a", "dict"]), host="dragonflyshipping.nl")
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
 
 async def test_get_parcel_raises_on_unknown_error_envelope():
     client = DragonflyApiClient(
-        _session_returning(200, {"success": False, "data": {"code": "rate_limited"}})
+        _session_returning(200, {"success": False, "data": {"code": "rate_limited"}}),
+        host="dragonflyshipping.nl",
     )
     with pytest.raises(DragonflyApiError) as err:
         await client.async_get_parcel("INTLCM123")
@@ -87,7 +100,7 @@ async def test_get_parcel_raises_on_unknown_error_envelope():
 
 
 async def test_get_parcel_raises_on_error_envelope_without_data():
-    client = DragonflyApiClient(_session_returning(200, {"success": False}))
+    client = DragonflyApiClient(_session_returning(200, {"success": False}), host="dragonflyshipping.nl")
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
@@ -95,6 +108,6 @@ async def test_get_parcel_raises_on_error_envelope_without_data():
 async def test_get_parcel_propagates_network_error():
     session = MagicMock()
     session.get = MagicMock(side_effect=aiohttp.ClientError("boom"))
-    client = DragonflyApiClient(session)
+    client = DragonflyApiClient(session, host="dragonflyshipping.nl")
     with pytest.raises(aiohttp.ClientError):
         await client.async_get_parcel("INTLCM123")

@@ -6,7 +6,7 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-A custom Home Assistant integration that tracks your [Dragonfly Shipping](https://dragonflyshipping.nl) parcels in the Netherlands. No account is needed — you enter the Track & Trace code yourself, just like on the Dragonfly website. Not even a postal code is required.
+A custom Home Assistant integration that tracks your [Dragonfly Shipping](https://dragonflyshipping.nl) parcels — Netherlands, Australia or Canada (Intelcom). No account is needed — you enter the Track & Trace code yourself, just like on the Dragonfly/Intelcom website. Not even a postal code is required.
 
 Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
@@ -34,7 +34,7 @@ Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) 
 ## Features
 
 - Track any number of Dragonfly parcels by Track & Trace code — no account, no postal code
-- Per-parcel sensor with the canonical status (`registered` / `in_transit` / `out_for_delivery` / `delivered` / …), the carrier's own Dutch status text, the expected delivery window and a tracking deep-link
+- Per-parcel sensor with the canonical status (`registered` / `in_transit` / `out_for_delivery` / `delivered` / …), the carrier's own status text (in your hub's country language), the expected delivery window and a tracking deep-link
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
 - Read-only **Deliveries** calendar with the expected delivery windows
 - `dragonfly.track_parcel` / `dragonfly.untrack_parcel` services, so a dashboard button can add a parcel
@@ -63,7 +63,7 @@ Copy `custom_components/dragonfly` into your `config/custom_components/` folder 
 
 ## Configuration
 
-Add the integration via **Settings → Devices & Services → Add Integration → Dragonfly Shipping**. There is nothing to fill in: the hub is created immediately (Dragonfly tracking needs no account or postal code).
+Add the integration via **Settings → Devices & Services → Add Integration → Dragonfly Shipping**. The only thing to pick is your country — Netherlands, Australia or Canada — which cannot be changed afterward; no account or postal code is needed.
 
 Then add parcels via the integration's **Configure** dialog, the [`dragonfly.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The Track & Trace code is on your shipping confirmation email or the missed-delivery card.
 

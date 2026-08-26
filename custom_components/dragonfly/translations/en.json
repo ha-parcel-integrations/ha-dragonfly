@@ -4,7 +4,10 @@
     "step": {
       "user": {
         "title": "Set up Dragonfly",
-        "description": "Dragonfly tracking needs no account or postal code — the hub is created right away. Add parcels afterwards via the integration options or the `dragonfly.track_parcel` service."
+        "description": "Dragonfly tracking needs no account or postal code. Pick the country your parcels are delivered in — this cannot be changed later. Add parcels afterwards via the integration options or the `dragonfly.track_parcel` service.",
+        "data": {
+          "country": "Country"
+        }
       }
     },
     "abort": {
@@ -64,6 +67,13 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "nl": "Netherlands",
+        "au": "Australia",
+        "ca": "Canada"
+      }
+    },
     "refresh_interval": {
       "options": {
         "15": "15 minutes",

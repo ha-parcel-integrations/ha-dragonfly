@@ -11,15 +11,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN
+from .const import CONF_COUNTRY, COUNTRIES, DEFAULT_COUNTRY, DOMAIN
 
 
 def build_device_info(entry: ConfigEntry) -> DeviceInfo:
     """Return the DeviceInfo shared by every entity of the Dragonfly hub."""
+    # Device name stays the bare "Dragonfly" — has_entity_name derives the
+    # default entity_id from it, and existing installs must not get renamed
+    # entities the moment this option ships. The country is still visible via
+    # the config entry title (set at setup) and the configuration_url below.
+    country = entry.options.get(CONF_COUNTRY, DEFAULT_COUNTRY)
+    host = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])["host"]
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name="Dragonfly",
         manufacturer="Dragonfly Shipping",
         entry_type=DeviceEntryType.SERVICE,
-        configuration_url="https://dragonflyshipping.nl",
+        configuration_url=f"https://{host}",
     )

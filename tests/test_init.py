@@ -7,6 +7,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dragonfly.api import DragonflyApiError
 from custom_components.dragonfly.const import (
+    CONF_COUNTRY,
     CONF_PARCELS,
     CONF_TRACKING_CODE,
     DOMAIN,
@@ -46,6 +47,36 @@ async def test_setup_and_unload(hass):
 
     # ...and removed on unload (single-instance integration).
     assert not hass.services.has_service(DOMAIN, "track_parcel")
+
+
+async def test_setup_uses_the_hub_country_host(hass):
+    """An AU/CA hub's client talks to its own domain, not NL's."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        options={CONF_COUNTRY: "AU", CONF_PARCELS: []},
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.runtime_data.client._host == "dragonflyshipping.com.au"
+
+
+async def test_setup_defaults_legacy_entry_to_nl(hass):
+    """An entry created before CONF_COUNTRY existed still sets up as NL."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        options={CONF_PARCELS: []},
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.runtime_data.client._host == "dragonflyshipping.nl"
 
 
 async def test_setup_retries_when_first_refresh_fails(hass):

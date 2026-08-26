@@ -6,6 +6,7 @@ from custom_components.dragonfly.config_flow import (
     valid_tracking_code,
 )
 from custom_components.dragonfly.const import (
+    CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
@@ -28,14 +29,38 @@ def test_valid_tracking_code_bounds():
     assert not valid_tracking_code("A" * 31)  # too long
 
 
-async def test_user_flow_creates_hub_without_input(hass):
-    """No account, no postcode — the entry is created straight away."""
+async def test_user_flow_shows_country_form(hass):
+    """No account, no postcode — the only thing setup asks is the country."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
     )
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+
+async def test_user_flow_creates_hub_defaulting_to_nl(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_COUNTRY: "nl"}
+    )
     assert result["type"] == "create_entry"
-    assert result["title"] == "Dragonfly"
+    assert result["title"] == "Dragonfly (NL)"
+    assert result["options"][CONF_COUNTRY] == "NL"
     assert result["options"][CONF_PARCELS] == []
+
+
+async def test_user_flow_creates_hub_for_a_chosen_country(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_COUNTRY: "au"}
+    )
+    assert result["type"] == "create_entry"
+    assert result["title"] == "Dragonfly (AU)"
+    assert result["options"][CONF_COUNTRY] == "AU"
 
 
 async def test_second_hub_rejected(hass):
@@ -148,6 +173,27 @@ async def test_options_remove_then_readd_same_code(hass):
     )
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PARCELS] == [{CONF_TRACKING_CODE: "INTLCM111111"}]
+
+
+async def test_options_flow_preserves_country(hass):
+    """The country is not editable in the options form, but must survive it.
+
+    An options flow's `data` replaces `entry.options` wholesale rather than
+    merging into it, so a submission that forgot to carry the country
+    forward would silently reset the hub back to NL.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        options={CONF_COUNTRY: "CA", CONF_PARCELS: []},
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], _init_input(add="intlcmb2c000123456")
+    )
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_COUNTRY] == "CA"
 
 
 async def test_options_changes_interval_history_and_delivered(hass):

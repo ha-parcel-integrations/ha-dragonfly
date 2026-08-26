@@ -6,7 +6,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import TRACKING_API_URL
+from .const import TRACKING_API_URL_TEMPLATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,17 +24,18 @@ class DragonflyApiClient:
     """Client for the public Dragonfly Shipping tracking endpoint.
 
     No authentication: the endpoint is keyed on the tracking code alone,
-    exactly like the Dragonfly consumer site (dragonflyshipping.nl, an
-    Intelcom brand). The worker always answers HTTP 200 with a JSON
-    envelope::
+    exactly like the Dragonfly consumer site (an Intelcom brand — one cfworker
+    deployment per country's own domain). The worker always answers HTTP 200
+    with a JSON envelope::
 
         {"success": true,  "data": {"result": {...}}}
         {"success": false, "data": {"status": 404, "code": "not_found", ...}}
     """
 
-    def __init__(self, session: aiohttp.ClientSession) -> None:
-        """Initialise the client with an aiohttp session."""
+    def __init__(self, session: aiohttp.ClientSession, host: str) -> None:
+        """Initialise the client with an aiohttp session and the hub's country host."""
         self._session = session
+        self._host = host
 
     async def async_get_parcel(self, tracking_code: str) -> dict[str, Any] | None:
         """Fetch one parcel's tracking details.
@@ -45,7 +46,7 @@ class DragonflyApiClient:
         or non-2xx status raises :class:`DragonflyApiError`; network errors
         propagate as ``aiohttp.ClientError``.
         """
-        url = TRACKING_API_URL.format(tracking_code=tracking_code)
+        url = TRACKING_API_URL_TEMPLATE.format(host=self._host, tracking_code=tracking_code)
         async with self._session.get(url) as response:
             if response.status != 200:
                 raise DragonflyApiError(f"HTTP {response.status}")

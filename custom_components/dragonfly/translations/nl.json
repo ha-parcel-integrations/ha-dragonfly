@@ -4,7 +4,10 @@
     "step": {
       "user": {
         "title": "Dragonfly instellen",
-        "description": "Dragonfly-tracking heeft geen account of postcode nodig — de hub wordt direct aangemaakt. Pakketten voeg je daarna toe via de integratie-opties of de service `dragonfly.track_parcel`."
+        "description": "Dragonfly-tracking heeft geen account of postcode nodig. Kies het land waarin je pakketten bezorgd worden — dit kan later niet meer gewijzigd worden. Pakketten voeg je daarna toe via de integratie-opties of de service `dragonfly.track_parcel`.",
+        "data": {
+          "country": "Land"
+        }
       }
     },
     "abort": {
@@ -64,6 +67,13 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "nl": "Nederland",
+        "au": "Australië",
+        "ca": "Canada"
+      }
+    },
     "refresh_interval": {
       "options": {
         "15": "15 minuten",

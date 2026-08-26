@@ -43,7 +43,12 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
     """
 
     def __init__(
-        self, hass: HomeAssistant, client: DragonflyApiClient, entry: ConfigEntry
+        self,
+        hass: HomeAssistant,
+        client: DragonflyApiClient,
+        entry: ConfigEntry,
+        *,
+        country: str,
     ) -> None:
         """Initialise the coordinator."""
         super().__init__(
@@ -54,6 +59,7 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=_refresh_interval(entry),
         )
         self._client = client
+        self._country = country
         self.delivered: list[dict] = []
         # tracking_code -> last successful raw payload, so a transient fetch
         # failure or a not-found blip keeps the parcel visible instead of
@@ -160,7 +166,8 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
 
         include_history = self._include_history
         normalized = [
-            normalize_parcel(raw, include_history=include_history) for raw in raws
+            normalize_parcel(raw, include_history=include_history, country=self._country)
+            for raw in raws
         ]
         active = [p for p in normalized if not p["delivered"]]
         delivered = [p for p in normalized if p["delivered"]]

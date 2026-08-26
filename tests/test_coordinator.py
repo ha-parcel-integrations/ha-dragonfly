@@ -177,6 +177,26 @@ def test_normalize_delivered_parcel():
     assert parcel["history"] is None  # opt-in, default off
 
 
+def test_normalize_delivered_parcel_au():
+    """AU has no Dutch label and its own deep-link domain."""
+    parcel = normalize_parcel(delivered_sample(), country="AU")
+    assert parcel["raw_status"] == "Delivered"
+    assert parcel["url"] == (
+        "https://dragonflyshipping.com.au/track-your-package/"
+        "?tracking-id=INTLCMB2C000123456"
+    )
+
+
+def test_normalize_delivered_parcel_ca():
+    """CA prefers English over French when both are present."""
+    parcel = normalize_parcel(delivered_sample(), country="CA")
+    assert parcel["raw_status"] == "Delivered"
+    assert parcel["url"] == (
+        "https://intelcom.ca/en/track-your-package/"
+        "?tracking-id=INTLCMB2C000123456"
+    )
+
+
 def test_normalize_history_opt_in():
     parcel = normalize_parcel(delivered_sample(), include_history=True)
     assert len(parcel["history"]) == 4
@@ -402,7 +422,7 @@ async def test_update_merges_multiple_parcels(hass):
     client.async_get_parcel.side_effect = lambda code: (
         active_sample() if code == "INTLCMB2C000999999" else delivered_sample()
     )
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     data = await coordinator._async_update_data()
 
@@ -412,12 +432,28 @@ async def test_update_merges_multiple_parcels(hass):
     assert coordinator.last_success_time is not None
 
 
+async def test_update_uses_the_coordinator_country(hass):
+    """The coordinator's ``country`` reaches normalize_parcel end-to-end."""
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = delivered_sample()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="AU")
+
+    await coordinator._async_update_data()
+
+    assert coordinator.delivered[0]["raw_status"] == "Delivered"
+    assert coordinator.delivered[0]["url"].startswith(
+        "https://dragonflyshipping.com.au/"
+    )
+
+
 async def test_update_not_found_shows_pending_placeholder(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCM999999"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = None  # not_found
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     data = await coordinator._async_update_data()
 
@@ -431,7 +467,7 @@ async def test_update_keeps_cached_on_error(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = delivered_sample()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
     await coordinator._async_update_data()  # populates cache
 
     client.async_get_parcel.side_effect = DragonflyApiError("HTTP 500")
@@ -446,7 +482,7 @@ async def test_update_all_fail_raises(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.side_effect = DragonflyApiError("HTTP 500")
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
@@ -460,7 +496,7 @@ async def test_update_skips_items_missing_fields(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = delivered_sample()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     await coordinator._async_update_data()
     assert client.async_get_parcel.await_count == 1  # empty item never fetched
@@ -474,7 +510,7 @@ async def test_update_backfills_missing_tracking_id(hass):
     del sample["tracking_id"]
     client = AsyncMock()
     client.async_get_parcel.return_value = sample
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     data = await coordinator._async_update_data()
     assert data[0]["barcode"] == "INTLCM424242"
@@ -490,7 +526,7 @@ async def test_update_event_carries_device_id(hass):
         identifiers={(DOMAIN, entry.entry_id)},
     )
     client = AsyncMock()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     events = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
@@ -510,7 +546,7 @@ async def test_update_fires_status_changed_event(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     events = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
@@ -535,7 +571,7 @@ async def test_update_fires_delivered_event_not_status_changed(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     delivered = []
     changed = []
@@ -562,7 +598,7 @@ async def test_no_events_for_parcel_first_seen_delivered(hass):
     client.async_get_parcel.side_effect = lambda code: (
         active_sample(code) if code == "INTLCMB2C000999999" else delivered_sample(code)
     )
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     fired = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_registered", lambda e: fired.append(e))
@@ -591,7 +627,7 @@ async def test_update_fires_registered_event_for_new_parcel(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     events = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_registered", lambda e: events.append(e))
@@ -620,7 +656,7 @@ async def test_update_fires_delivery_time_changed_event(hass):
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     events = []
     hass.bus.async_listen(
@@ -647,7 +683,7 @@ async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = delivered_sample()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
     await coordinator._async_update_data()
     stamp = coordinator.last_success_time
     assert stamp is not None
@@ -670,7 +706,7 @@ async def test_delivered_filter_days_and_count(hass):
 
     entry = _entry_with([])
     entry.add_to_hass(hass)
-    coordinator = DragonflyCoordinator(hass, AsyncMock(), entry)
+    coordinator = DragonflyCoordinator(hass, AsyncMock(), entry, country="NL")
 
     # days: 7-day window drops the 30-day-old one.
     hass.config_entries.async_update_entry(
@@ -693,7 +729,7 @@ async def test_update_prunes_cache_for_untracked_parcels(hass):
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = delivered_sample()
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
     coordinator._raw_cache["GONE"] = {"tracking_id": "GONE", "last_status": None}
 
     await coordinator._async_update_data()
@@ -724,7 +760,7 @@ async def test_update_fetches_parcels_concurrently(hass):
 
     client = AsyncMock()
     client.async_get_parcel.side_effect = _slow_fetch
-    coordinator = DragonflyCoordinator(hass, client, entry)
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
 
     await coordinator._async_update_data()
     assert peak == 2

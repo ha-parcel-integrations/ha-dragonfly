@@ -43,19 +43,52 @@ KNOWN_CAPABILITIES = frozenset(
 CAPABILITIES = frozenset({"delivery_window", "url", "history"})
 
 # Public Dragonfly Shipping tracking endpoint (no auth) — the same Cloudflare
-# worker the consumer site (dragonflyshipping.nl, an Intelcom brand) calls.
-# Keyed on the tracking code alone: no postal code, no account. Always
-# answers HTTP 200 with a JSON envelope; ``success`` + ``data.code``
-# distinguish a hit from an unknown code (``"not_found"``).
-TRACKING_API_URL = "https://dragonflyshipping.nl/cfworker/v3/tracking/{tracking_code}/"
+# worker every country's consumer site calls, one worker deployment per
+# country's own domain (see COUNTRIES below). Keyed on the tracking code
+# alone: no postal code, no account. Always answers HTTP 200 with a JSON
+# envelope; ``success`` + ``data.code`` distinguish a hit from an unknown
+# code (``"not_found"``).
+TRACKING_API_URL_TEMPLATE = "https://{host}/cfworker/v3/tracking/{tracking_code}/"
 
-# Consumer tracking deep-link, used to populate the parcel's ``url`` field.
-TRACKING_URL = "https://dragonflyshipping.nl/nl/volg-je-pakket/?tracking-id={tracking_code}"
+# The country a hub was set up for, chosen once at setup and not editable
+# afterward (tracked parcels are keyed to one backend). Dragonfly Shipping is
+# an Intelcom brand; NL is the original consumer site and stays the default
+# for entries created before this option existed.
+CONF_COUNTRY = "country"
+DEFAULT_COUNTRY = "NL"
 
-# Label language used for the human-readable ``raw_status`` texts. The API
-# embeds its labels per language (``nl`` / ``en``); Dutch first matches the
-# NL-only consumer site, English is the fallback.
-LABEL_LANGUAGES = ("nl", "en")
+# code -> {host, tracking_url, label_languages}. Every country runs the exact
+# same cfworker platform on its own domain (confirmed by control-test: same
+# data-url pattern, byte-identical not_found envelope) — only the host, the
+# consumer deep-link and the label language differ.
+#
+# ``label_languages`` is the preference order for the API's per-language
+# status labels (``labels.shortLabel.{lang}``): NL's site is Dutch-first with
+# an English fallback; AU's is English-only; CA's is officially bilingual
+# (hreflang carries both en-CA and fr-CA, fr-CA as x-default) but no real CA
+# payload has been captured yet to confirm whether the backend actually adds
+# an ``.fr`` label key, so English leads and French is a same-shape fallback
+# rather than a confirmed preference.
+#
+# AU/CA payload shape (step catalogue, field mapping, timestamp format) is
+# assumed identical to NL's, not yet confirmed on a real parcel.
+COUNTRIES: dict[str, dict[str, object]] = {
+    "NL": {
+        "host": "dragonflyshipping.nl",
+        "tracking_url": "https://dragonflyshipping.nl/nl/volg-je-pakket/?tracking-id={tracking_code}",
+        "label_languages": ("nl", "en"),
+    },
+    "AU": {
+        "host": "dragonflyshipping.com.au",
+        "tracking_url": "https://dragonflyshipping.com.au/track-your-package/?tracking-id={tracking_code}",
+        "label_languages": ("en",),
+    },
+    "CA": {
+        "host": "intelcom.ca",
+        "tracking_url": "https://intelcom.ca/en/track-your-package/?tracking-id={tracking_code}",
+        "label_languages": ("en", "fr"),
+    },
+}
 
 # Tracked parcels live in the config entry options as a list of
 # ``{tracking_code}`` dicts — Dragonfly has no account/feed, the user enters

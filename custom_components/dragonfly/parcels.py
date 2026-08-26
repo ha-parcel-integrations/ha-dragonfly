@@ -17,11 +17,11 @@ from homeassistant.config_entries import ConfigEntry
 from .const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
+    COUNTRIES,
+    DEFAULT_COUNTRY,
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
     HISTORY_MAX_EVENTS,
-    LABEL_LANGUAGES,
-    TRACKING_URL,
     ParcelStatus,
 )
 
@@ -142,25 +142,29 @@ def _to_iso_timestamp(value) -> str | None:
     return str(value)
 
 
-def status_label(status: dict | None, key: str = "shortLabel") -> str | None:
+def status_label(
+    status: dict | None, key: str = "shortLabel", *, country: str = DEFAULT_COUNTRY
+) -> str | None:
     """Return a human-readable label from a Dragonfly status object.
 
     The API embeds its texts per language: ``labels[key][lang]`` on newer
     payloads, ``[key][lang]`` directly on older ones — exactly the fallback
-    chain the consumer site uses. Dutch is preferred (NL-only carrier),
-    English is the fallback. ``[link ...]`` markup is stripped to its inner
-    text and ``{token}`` placeholders are filled from the status'
-    ``package_location.address`` when available.
+    chain the consumer site uses. Which language leads follows the hub's
+    country (``COUNTRIES[country]["label_languages"]``) — Dutch for NL,
+    English-only for AU, English then French for CA. ``[link ...]`` markup is
+    stripped to its inner text and ``{token}`` placeholders are filled from
+    the status' ``package_location.address`` when available.
     """
     if not isinstance(status, dict):
         return None
+    label_languages = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])["label_languages"]
     for source in (status.get("labels"), status):
         if not isinstance(source, dict):
             continue
         per_lang = source.get(key)
         if not isinstance(per_lang, dict):
             continue
-        for lang in LABEL_LANGUAGES:
+        for lang in label_languages:
             label = per_lang.get(lang)
             if label:
                 return _format_label(str(label), status)
@@ -179,14 +183,17 @@ def _format_label(label: str, status: dict) -> str:
 
 
 def build_history(
-    status_list: list | None, *, max_events: int = HISTORY_MAX_EVENTS
+    status_list: list | None,
+    *,
+    max_events: int = HISTORY_MAX_EVENTS,
+    country: str = DEFAULT_COUNTRY,
 ) -> list[dict]:
     """Build the canonical ``history`` list from Dragonfly's ``status_list``.
 
     Each entry is ``{timestamp, status, raw_status}`` — identical across all
-    suite carriers. ``raw_status`` is the API's own (Dutch) short label.
-    Sorted oldest → newest and capped to the most recent ``max_events``.
-    Comes free with the tracking call (no extra request).
+    suite carriers. ``raw_status`` is the API's own short label, in the hub's
+    country language. Sorted oldest → newest and capped to the most recent
+    ``max_events``. Comes free with the tracking call (no extra request).
     """
     parseable: list[tuple[datetime, dict]] = []
     unparseable: list[dict] = []
@@ -199,7 +206,7 @@ def build_history(
         entry = {
             "timestamp": timestamp,
             "status": map_event_status(status.get("step")),
-            "raw_status": status_label(status),
+            "raw_status": status_label(status, country=country),
         }
         dt = _parse_iso(timestamp)
         if dt is None:
@@ -211,14 +218,17 @@ def build_history(
     return ordered[-max_events:]
 
 
-def _tracking_url(tracking_code: str | None) -> str | None:
-    """Construct the consumer tracking deep-link for a parcel."""
+def _tracking_url(tracking_code: str | None, *, country: str = DEFAULT_COUNTRY) -> str | None:
+    """Construct the consumer tracking deep-link for a parcel, for the hub's country."""
     if not tracking_code:
         return None
-    return TRACKING_URL.format(tracking_code=tracking_code)
+    template = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])["tracking_url"]
+    return template.format(tracking_code=tracking_code)
 
 
-def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
+def normalize_parcel(
+    raw: dict, *, include_history: bool = False, country: str = DEFAULT_COUNTRY
+) -> dict:
     """Return a carrier-agnostic parcel dict with the original payload under ``raw``.
 
     The expected delivery window is ``public_eta.from``/``public_eta.to``,
@@ -268,17 +278,21 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
         "sender": raw.get("client_code") or None,
         "receiver": None,
         "status": map_parcel_status(step),
-        "raw_status": status_label(last_status),
+        "raw_status": status_label(last_status, country=country),
         "delivered": delivered,
         "delivered_at": _to_iso_timestamp(last_status.get("timestamp")) if delivered else None,
         "planned_from": None if delivered else eta_from,
         "planned_to": None if delivered else eta_to,
         "pickup": is_pickup,
         "pickup_point": None,
-        "url": _tracking_url(tracking_code),
+        "url": _tracking_url(tracking_code, country=country),
         "weight": None,
         "dimensions": None,
-        "history": build_history(raw.get("status_list")) if include_history else None,
+        "history": (
+            build_history(raw.get("status_list"), country=country)
+            if include_history
+            else None
+        ),
         "raw": raw,
     }
 
