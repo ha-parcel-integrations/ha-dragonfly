@@ -44,7 +44,7 @@ Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) 
 
 ## Requirements
 
-- Home Assistant 2024.7 or newer
+- Home Assistant 2024.12 or newer
 - A Dragonfly Shipping parcel and its Track & Trace code (from the shipping
   confirmation email or the missed-delivery card) — no account or postal code
   needed
@@ -92,6 +92,8 @@ Shipping → ⋮ → Delete**. Nothing is stored on Dragonfly's side.
 | `sensor.dragonfly_next_delivery` | Earliest expected delivery moment across all active parcels |
 | `sensor.dragonfly_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `sensor.dragonfly_last_successful_update` | Diagnostic: when Dragonfly was last polled successfully |
+| `calendar.dragonfly_deliveries` | Expected delivery dates for active parcels, read-only, no extra API calls |
+| `button.dragonfly_refresh` | Forces an immediate poll without waiting for the next scheduled interval |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
 
