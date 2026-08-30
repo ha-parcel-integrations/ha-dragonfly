@@ -28,8 +28,6 @@ dragonfly_track_new_parcel:
     - action: dragonfly.track_parcel
       data:
         tracking_code: "{{ states('input_text.dragonfly_new_parcel') | trim }}"
-        
-        
     - action: input_text.set_value
       target:
         entity_id: input_text.dragonfly_new_parcel
