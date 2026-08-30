@@ -43,14 +43,25 @@ decisions only.
   (dicts, not strings, so future per-parcel fields need no migration). Added three
   ways (options flow, `dragonfly.track_parcel`/`untrack_parcel` services — no
   postal-code field, unlike GLS — and a Lovelace button). Options flow is one
-  sectioned form (`parcels`/`delivered`/`history`/`polling`), remove-then-add
-  order.
-- **Option changes apply live, no reload** — update listener retunes
-  `coordinator.update_interval` + `async_request_refresh()`; do NOT switch to
-  `async_schedule_reload`. Services are removed on unload unconditionally (single
-  instance — no other-hubs check needed, unlike GLS).
+  sectioned form (`parcels`/`delivered`/`history`), remove-then-add order. There
+  is no polling section — see Dynamic polling below.
+- **Option changes apply live, no reload** — update listener calls
+  `async_request_refresh()`; do NOT switch to `async_schedule_reload`. Services
+  are removed on unload unconditionally (single instance — no other-hubs check
+  needed, unlike GLS).
 
 ## Coordinator behaviour (mirror GLS, adapted)
+
+**Dynamic, status-driven polling is unconditional — no config option.** No
+`refresh_interval` anywhere in `const.py`/`config_flow.py`; the coordinator
+always recomputes its own cadence at the end of `_async_update_data`: quiet
+window 00:00–06:00 local with two catch-up anchors, 15 min hot tier for an
+`out_for_delivery` parcel within an hour of `planned_from` (or with none at
+all), 45 min mid tier otherwise, full stop (`update_interval = None`) when
+nothing is tracked or everything tracked is delivered — resumes on the next
+options-triggered refresh (adding a parcel back). See
+`carrier-research/dynamic-polling.md` for the full algorithm and
+`ha-carrier-template`'s coordinator for the canonical shape this mirrors.
 
 Concurrent per-parcel `asyncio.gather`; **`_raw_cache`** keyed on tracking code so
 a transient error or an unknown-code blip keeps the last good payload, and a

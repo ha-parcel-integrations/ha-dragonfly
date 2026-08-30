@@ -48,15 +48,6 @@
             "data_description": {
               "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
             }
-          },
-          "polling": {
-            "name": "Verversen",
-            "data": {
-              "refresh_interval": "Ververs elke"
-            },
-            "data_description": {
-              "refresh_interval": "Hoe vaak de integratie Dragonfly controleert op pakketupdates. Een langzamer interval is vriendelijker voor de API van Dragonfly; de standaard van 30 minuten is ruim voldoende voor de meeste pakketten."
-            }
           }
         },
         "menu_options": {
@@ -75,8 +66,7 @@
         "data": {
           "delivered_filter_type": "Bezorgde pakketten: filteren op",
           "delivered_filter_amount": "Bezorgde pakketten: aantal",
-          "include_history": "Statusgeschiedenis opnemen",
-          "refresh_interval": "Vernieuwen elke"
+          "include_history": "Statusgeschiedenis opnemen"
         }
       }
     },
@@ -91,15 +81,6 @@
         "nl": "Nederland",
         "au": "Australië",
         "ca": "Canada"
-      }
-    },
-    "refresh_interval": {
-      "options": {
-        "15": "15 minuten",
-        "30": "30 minuten",
-        "60": "60 minuten",
-        "120": "120 minuten",
-        "240": "240 minuten"
       }
     },
     "delivered_filter_type": {

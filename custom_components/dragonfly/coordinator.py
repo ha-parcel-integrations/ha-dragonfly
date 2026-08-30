@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -10,16 +11,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import DragonflyApiClient, DragonflyApiError
 from .const import (
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
-    CONF_REFRESH_INTERVAL,
     CONF_TRACKING_CODE,
     DEFAULT_INCLUDE_HISTORY,
-    DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
+    HOT_INTERVAL_MINUTES,
+    HOT_LOOKAHEAD_HOURS,
+    MID_INTERVAL_MINUTES,
+    QUIET_WINDOW_END_HOUR,
+    QUIET_WINDOW_START_HOUR,
+    STAGGER_MINUTES,
     ParcelStatus,
 )
 from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_ts
@@ -27,10 +33,79 @@ from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_t
 _LOGGER = logging.getLogger(__name__)
 
 
-def _refresh_interval(entry: ConfigEntry) -> timedelta:
-    """Return the configured refresh interval as a ``timedelta``."""
-    minutes = int(entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL))
-    return timedelta(minutes=minutes)
+def _stagger_minutes(entry_id: str) -> int:
+    """Deterministic per-install offset, stable across restarts."""
+    digest = hashlib.sha256(entry_id.encode()).hexdigest()
+    return int(digest, 16) % STAGGER_MINUTES
+
+
+def _in_quiet_window(moment: datetime) -> bool:
+    """Whether ``moment`` (local time) falls in the no-polling window."""
+    return QUIET_WINDOW_START_HOUR <= moment.hour < QUIET_WINDOW_END_HOUR
+
+
+def _next_anchor(now: datetime) -> datetime:
+    """Return the next of the two daily anchors (00:00 / 06:00 local)."""
+    six_today = now.replace(
+        hour=QUIET_WINDOW_END_HOUR, minute=0, second=0, microsecond=0
+    )
+    if now < six_today:
+        return six_today
+    midnight_tomorrow = (now + timedelta(days=1)).replace(
+        hour=QUIET_WINDOW_START_HOUR, minute=0, second=0, microsecond=0
+    )
+    return midnight_tomorrow
+
+
+def _hottest_tier_minutes(active_parcels: list[dict], now: datetime) -> int | None:
+    """Tier for the barcode-based model (dynamic-polling.md Section 2.1).
+
+    ``None`` means "stop polling entirely" — nothing is tracked, or every
+    tracked parcel is already delivered (already filtered out of
+    ``active_parcels`` by the caller).
+    """
+    if not active_parcels:
+        return None
+
+    for parcel in active_parcels:
+        if parcel["status"] != ParcelStatus.OUT_FOR_DELIVERY:
+            continue
+        planned_from = parcel.get("planned_from")
+        if not planned_from:
+            return HOT_INTERVAL_MINUTES
+        planned_dt = dt_util.parse_datetime(planned_from)
+        if planned_dt is None:
+            return HOT_INTERVAL_MINUTES
+        if dt_util.as_utc(now) >= dt_util.as_utc(planned_dt) - timedelta(
+            hours=HOT_LOOKAHEAD_HOURS
+        ):
+            return HOT_INTERVAL_MINUTES
+
+    return MID_INTERVAL_MINUTES
+
+
+def _next_update_interval(
+    now: datetime, tier_minutes: int | None, entry_id: str
+) -> timedelta | None:
+    """Turn a tier into the coordinator's next ``update_interval``.
+
+    ``None`` fully suspends scheduling (``DataUpdateCoordinator`` honours
+    this natively). Otherwise, clamp the naive next-due time forward to the
+    next anchor whenever it would land inside the quiet window — including
+    when ``now`` itself is already inside it (an anchor poll computing its
+    own follow-up).
+    """
+    if tier_minutes is None:
+        return None
+
+    if _in_quiet_window(now):
+        return _next_anchor(now) - now
+
+    stagger = timedelta(minutes=_stagger_minutes(entry_id))
+    candidate = now + timedelta(minutes=tier_minutes) + stagger
+    if _in_quiet_window(candidate):
+        return _next_anchor(now) - now
+    return candidate - now
 
 
 class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
@@ -56,7 +131,10 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
             _LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=_refresh_interval(entry),
+            # Recomputed at the end of every refresh — start with the hot
+            # cadence so the very first poll, right after setup, happens
+            # promptly regardless of what it finds.
+            update_interval=timedelta(minutes=HOT_INTERVAL_MINUTES),
         )
         self._client = client
         self._country = country
@@ -78,6 +156,15 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         self._cached_device_id: str | None = None
         # Timestamp of the last successful poll (diagnostic sensor).
         self.last_success_time: datetime | None = None
+        # Last tier computed by _hottest_tier_minutes — surfaced in
+        # diagnostics; ``None`` before the first refresh and whenever polling
+        # is fully suspended (nothing tracked, or everything delivered).
+        self._current_tier_minutes: int | None = None
+
+    @property
+    def current_tier_minutes(self) -> int | None:
+        """Tier minutes computed on the last refresh (diagnostics only)."""
+        return self._current_tier_minutes
 
     def _device_id(self) -> str | None:
         """Resolve (and cache) this entry's device id for event payloads."""
@@ -195,6 +282,12 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         # from cache must not present itself as a successful update.
         if not codes or errors < len(codes):
             self.last_success_time = datetime.now(timezone.utc)
+
+        now = dt_util.now()
+        self._current_tier_minutes = _hottest_tier_minutes(normalized_active, now)
+        self.update_interval = _next_update_interval(
+            now, self._current_tier_minutes, self.config_entry.entry_id
+        )
         return normalized_active
 
     def _fire_change_events(self, parcels: list[dict]) -> None:

@@ -17,6 +17,7 @@ Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) 
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Options](#options)
+- [Dynamic polling](#dynamic-polling)
 - [Removal](#removal)
 - [Sensors](#sensors)
 - [Parcel status reference](#parcel-status-reference)
@@ -76,7 +77,25 @@ Open **Configure** on the integration entry:
 | Parcels | Add / remove | — | Manage the tracked Track & Trace codes. Changes apply immediately, no restart. |
 | Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
-| Polling | Refresh every | 30 min | How often Dragonfly is checked. Slower is gentler on their API. |
+
+## Dynamic polling
+
+Instead of polling Dragonfly at the same rate around the clock, the
+integration adjusts its own cadence to what your tracked parcels are actually
+doing:
+
+- **Quiet hours** — no polling between 00:00–06:00 local time, aside from one
+  catch-up check at each end of that window (around midnight and around 6
+  AM), so an overnight update is never missed.
+- **Hot (every 15 minutes)** — while any tracked parcel is out for delivery
+  today, starting an hour before its delivery window opens (or immediately if
+  no window is known yet).
+- **Normal (every 45 minutes)** — for anything else still on its way.
+- **Fully paused** — once every tracked parcel has been delivered, or nothing
+  is tracked at all, polling stops until you add a parcel back (adding one
+  always triggers an immediate check, regardless of the pause).
+- A small, fixed per-hub offset is added on top, so not every Dragonfly hub
+  out there polls at exactly the same second.
 
 ## Removal
 

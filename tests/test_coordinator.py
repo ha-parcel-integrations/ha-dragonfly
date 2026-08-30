@@ -1,5 +1,5 @@
 """Tests for the Dragonfly coordinator logic."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,10 +13,20 @@ from custom_components.dragonfly.const import (
     CONF_PARCELS,
     CONF_TRACKING_CODE,
     DOMAIN,
+    HOT_INTERVAL_MINUTES,
     KNOWN_CAPABILITIES,
+    MID_INTERVAL_MINUTES,
+    STAGGER_MINUTES,
     ParcelStatus,
 )
-from custom_components.dragonfly.coordinator import DragonflyCoordinator
+from custom_components.dragonfly.coordinator import (
+    DragonflyCoordinator,
+    _hottest_tier_minutes,
+    _in_quiet_window,
+    _next_anchor,
+    _next_update_interval,
+    _stagger_minutes,
+)
 from custom_components.dragonfly.parcels import (
     build_history,
     map_event_status,
@@ -391,6 +401,166 @@ def test_sort_parcels_puts_unparseable_last():
     ]
     ordered = [p["barcode"] for p in sort_parcels_by_ts(parcels, "planned_from")]
     assert ordered == ["c", "a", "b"]
+
+
+# ---------------------------------------------------------------------------
+# Dynamic polling (dynamic-polling.md Section 2.1, barcode-based) — pure
+# helpers
+# ---------------------------------------------------------------------------
+
+UTC = timezone.utc
+
+
+def test_quiet_window_is_midnight_to_six():
+    assert _in_quiet_window(datetime(2026, 1, 1, 0, 0, tzinfo=UTC))
+    assert _in_quiet_window(datetime(2026, 1, 1, 5, 59, tzinfo=UTC))
+    assert not _in_quiet_window(datetime(2026, 1, 1, 6, 0, tzinfo=UTC))
+    assert not _in_quiet_window(datetime(2026, 1, 1, 23, 59, tzinfo=UTC))
+
+
+def test_next_anchor_before_six_is_six_today():
+    now = datetime(2026, 1, 1, 2, 30, tzinfo=UTC)
+    assert _next_anchor(now) == datetime(2026, 1, 1, 6, 0, tzinfo=UTC)
+
+
+def test_next_anchor_after_six_is_midnight_tomorrow():
+    now = datetime(2026, 1, 1, 14, 0, tzinfo=UTC)
+    assert _next_anchor(now) == datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+
+
+def test_stagger_is_stable_and_bounded():
+    a = _stagger_minutes("entry-1")
+    b = _stagger_minutes("entry-1")
+    c = _stagger_minutes("entry-2")
+    assert a == b
+    assert 0 <= a < STAGGER_MINUTES
+    assert 0 <= c < STAGGER_MINUTES
+
+
+def test_tier_is_none_when_nothing_active():
+    assert _hottest_tier_minutes([], datetime(2026, 1, 1, 12, tzinfo=UTC)) is None
+
+
+def test_tier_is_mid_for_non_hot_statuses():
+    now = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    parcels = [
+        {"status": "registered", "planned_from": None},
+        {"status": "problem", "planned_from": None},
+        {"status": "returning", "planned_from": None},
+    ]
+    assert _hottest_tier_minutes(parcels, now) == MID_INTERVAL_MINUTES
+
+
+def test_tier_is_hot_when_out_for_delivery_without_planned_from():
+    now = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    parcels = [
+        {"status": "in_transit", "planned_from": None},
+        {"status": "out_for_delivery", "planned_from": None},
+    ]
+    assert _hottest_tier_minutes(parcels, now) == HOT_INTERVAL_MINUTES
+
+
+def test_tier_is_hot_within_lookahead_of_planned_from():
+    planned = datetime(2026, 1, 1, 13, 0, tzinfo=UTC)
+    now = planned - timedelta(minutes=30)  # inside the 1h lookahead
+    parcels = [{"status": "out_for_delivery", "planned_from": planned.isoformat()}]
+    assert _hottest_tier_minutes(parcels, now) == HOT_INTERVAL_MINUTES
+
+
+def test_tier_is_mid_before_lookahead_of_planned_from():
+    planned = datetime(2026, 1, 1, 13, 0, tzinfo=UTC)
+    now = planned - timedelta(hours=3)  # well outside the 1h lookahead
+    parcels = [{"status": "out_for_delivery", "planned_from": planned.isoformat()}]
+    assert _hottest_tier_minutes(parcels, now) == MID_INTERVAL_MINUTES
+
+
+def test_next_update_interval_is_none_for_none_tier():
+    assert _next_update_interval(datetime(2026, 1, 1, 12, tzinfo=UTC), None, "entry-1") is None
+
+
+def test_daytime_candidate_outside_window_is_tier_plus_stagger():
+    now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    interval = _next_update_interval(now, MID_INTERVAL_MINUTES, "entry-1")
+    stagger = _stagger_minutes("entry-1")
+    assert interval == timedelta(minutes=MID_INTERVAL_MINUTES + stagger)
+
+
+def test_now_inside_quiet_window_jumps_to_next_anchor():
+    now = datetime(2026, 1, 1, 1, 0, tzinfo=UTC)  # an anchor poll itself
+    interval = _next_update_interval(now, HOT_INTERVAL_MINUTES, "entry-1")
+    assert now + interval == datetime(2026, 1, 1, 6, 0, tzinfo=UTC)
+
+
+def test_candidate_landing_in_quiet_window_clamps_to_the_midnight_anchor():
+    now = datetime(2026, 1, 1, 23, 50, tzinfo=UTC)
+    interval = _next_update_interval(now, MID_INTERVAL_MINUTES, "entry-1")
+    assert now + interval == datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# Dynamic polling — wired into _async_update_data
+# ---------------------------------------------------------------------------
+
+
+async def test_polling_stops_entirely_with_nothing_tracked(hass):
+    entry = _entry_with([])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+
+    assert coordinator.current_tier_minutes is None
+    assert coordinator.update_interval is None
+
+
+async def test_polling_stops_when_everything_delivered(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = delivered_sample()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+
+    assert coordinator.current_tier_minutes is None
+    assert coordinator.update_interval is None
+
+
+async def test_polling_is_hot_for_an_out_for_delivery_parcel(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = active_sample()  # out_for_delivery
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+
+    assert coordinator.current_tier_minutes == HOT_INTERVAL_MINUTES
+    assert coordinator.update_interval is not None
+
+
+async def test_polling_resumes_when_a_parcel_is_added_back(hass):
+    """Adding a tracked parcel back re-arms scheduling on the next refresh."""
+    entry = _entry_with([])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+    assert coordinator.update_interval is None
+
+    hass.config_entries.async_update_entry(
+        entry,
+        options={
+            **entry.options,
+            CONF_PARCELS: [{CONF_TRACKING_CODE: "INTLCMB2C000999999"}],
+        },
+    )
+    client.async_get_parcel.return_value = active_sample()
+    await coordinator._async_update_data()
+
+    assert coordinator.update_interval is not None
 
 
 # ---------------------------------------------------------------------------

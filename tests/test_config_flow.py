@@ -11,7 +11,6 @@ from custom_components.dragonfly.const import (
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
-    CONF_REFRESH_INTERVAL,
     CONF_TRACKING_CODE,
     DOMAIN,
 )
@@ -82,7 +81,7 @@ def _hub(parcels: list[dict]) -> MockConfigEntry:
 
 
 def _init_input(
-    *, add="", remove=None, interval="30", history=False,
+    *, add="", remove=None, history=False,
     filter_type="days", amount=7,
 ) -> dict:
     """Build the sectioned options-form submission."""
@@ -96,7 +95,6 @@ def _init_input(
             CONF_DELIVERED_FILTER_AMOUNT: amount,
         },
         "history": {CONF_INCLUDE_HISTORY: history},
-        "polling": {CONF_REFRESH_INTERVAL: interval},
     }
 
 
@@ -129,7 +127,7 @@ async def test_options_settings_preserve_parcel_list(hass):
     entry.add_to_hass(hass)
     result = await _open_options_step(hass, entry, "settings")
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 7, CONF_INCLUDE_HISTORY: False, CONF_REFRESH_INTERVAL: "30"}
+        result["flow_id"], {CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 7, CONF_INCLUDE_HISTORY: False}
     )
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PARCELS] == parcels

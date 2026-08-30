@@ -104,13 +104,29 @@ CONF_DELIVERED_FILTER_AMOUNT = "delivered_filter_amount"
 DEFAULT_DELIVERED_FILTER_TYPE = "days"
 DEFAULT_DELIVERED_FILTER_AMOUNT = 7
 
-# Refresh interval (minutes) controls how often the coordinator polls
-# Dragonfly. Default 30 min keeps the load on the public endpoint gentle; the
-# minimum is 15 min for the same reason. Kept identical to the other suite
-# carriers.
-CONF_REFRESH_INTERVAL = "refresh_interval"
-REFRESH_INTERVAL_OPTIONS = (15, 30, 60, 120, 240)
-DEFAULT_REFRESH_INTERVAL = 30
+# Dynamic, status-driven polling — unconditional, no user-facing interval
+# option. See carrier-research/dynamic-polling.md for the full algorithm and
+# the reasoning behind it.
+#
+# Quiet window: no polling between these local hours except the two anchors
+# below, for overnight / end-of-day catch-up.
+QUIET_WINDOW_START_HOUR = 0
+QUIET_WINDOW_END_HOUR = 6
+
+# Cadence while polling is active (minutes). Hot = a tracked, not-yet-delivered
+# parcel is out_for_delivery within HOT_LOOKAHEAD_HOURS of its planned_from (or
+# has no planned_from at all); mid = anything else still in flight. This is a
+# barcode-based coordinator (Section 2.1): when every tracked parcel is
+# delivered, or nothing is tracked, polling stops entirely instead of falling
+# to the mid tier — see coordinator.py's ``_hottest_tier_minutes``.
+HOT_INTERVAL_MINUTES = 15
+MID_INTERVAL_MINUTES = 45
+HOT_LOOKAHEAD_HOURS = 1
+
+# Small, stable per-install offset added to every computed interval so
+# different installs don't all hit an anchor or tier boundary at the same
+# second. Deterministic (hash of the config entry id), not random.
+STAGGER_MINUTES = 7
 
 # Per-parcel status history is opt-in and off by default, kept identical to
 # the other suite carriers. Dragonfly returns the timeline (``status_list``)
