@@ -46,7 +46,7 @@
               "include_history": "Statusgeschiedenis toevoegen"
             },
             "data_description": {
-              "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
+              "include_history": "Voegt per pakket een geschiedenisattribuut toe met elke statusupdate (tijdstip, status, oorspronkelijke tekst). Standaard uit."
             }
           }
         },
@@ -56,7 +56,7 @@
         }
       },
       "parcels": {
-        "title": "Pakketten",
+        "title": "Pakketten beheren",
         "data": {
           "tracking_codes": "Trackingcodes"
         }
@@ -66,7 +66,7 @@
         "data": {
           "delivered_filter_type": "Bezorgde pakketten: filteren op",
           "delivered_filter_amount": "Bezorgde pakketten: aantal",
-          "include_history": "Statusgeschiedenis opnemen"
+          "include_history": "Statusgeschiedenis toevoegen"
         }
       }
     },
