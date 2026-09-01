@@ -1,6 +1,6 @@
 {
   "domain": "dragonfly",
-  "name": "Dragonfly Shipping",
+  "name": "Dragonfly & Intelcom",
   "codeowners": ["@peternijssen", "@HummelsTech"],
   "config_flow": true,
   "documentation": "https://github.com/ha-parcel-integrations/ha-dragonfly",
