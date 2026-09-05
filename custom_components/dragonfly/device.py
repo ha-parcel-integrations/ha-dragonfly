@@ -13,6 +13,8 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .const import CONF_COUNTRY, COUNTRIES, DEFAULT_COUNTRY, DOMAIN
 
+ATTRIBUTION = "Data provided by Dragonfly"
+
 
 def build_device_info(entry: ConfigEntry) -> DeviceInfo:
     """Return the DeviceInfo shared by every entity of the Dragonfly hub."""

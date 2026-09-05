@@ -20,7 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DragonflyConfigEntry
 from .const import DOMAIN
 from .coordinator import DragonflyCoordinator
-from .device import build_device_info
+from .device import ATTRIBUTION, build_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class DragonflyIncomingParcelsSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "incoming_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = "Data provided by Dragonfly Shipping"
+    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -156,7 +156,7 @@ class DragonflyParcelSensor(CoordinatorEntity[DragonflyCoordinator], SensorEntit
 
     _attr_has_entity_name = True
     _attr_translation_key = "parcel"
-    _attr_attribution = "Data provided by Dragonfly Shipping"
+    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"raw", "history"})
 
     def __init__(
@@ -197,7 +197,7 @@ class DragonflyNextDeliverySensor(
     _attr_has_entity_name = True
     _attr_translation_key = "next_delivery"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_attribution = "Data provided by Dragonfly Shipping"
+    _attr_attribution = ATTRIBUTION
 
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry
@@ -250,7 +250,7 @@ class DragonflyDeliveredParcelsSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "delivered_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = "Data provided by Dragonfly Shipping"
+    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -281,7 +281,7 @@ class DragonflyLastUpdateSensor(
     _attr_translation_key = "last_update"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_attribution = "Data provided by Dragonfly Shipping"
+    _attr_attribution = ATTRIBUTION
 
     def __init__(
         self, coordinator: DragonflyCoordinator, entry: ConfigEntry
