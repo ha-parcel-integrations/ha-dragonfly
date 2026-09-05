@@ -1,5 +1,4 @@
 {
   "kind": "integration",
-  "domain": "dragonfly",
-  "research_api_path": "carrier-research/dragonfly/api/"
+  "domain": "dragonfly"
 }
