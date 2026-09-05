@@ -1,0 +1,7 @@
+{
+  "kind": "integration",
+  "baseline": 1,
+  "domain": "dragonfly",
+  "research_api_path": "carrier-research/dragonfly/api/"
+}
+
