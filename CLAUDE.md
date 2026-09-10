@@ -25,6 +25,11 @@ response envelope, payload→canonical mapping, the step/status vocabulary and t
 timestamp formats. Do not duplicate them here; this file is HA-integration
 decisions only.
 
+**Structure, options flow, dynamic polling and module layout are suite-wide**
+and identical in every carrier — the authoritative spec is
+[`ha-carrier-template/scaffold/CLAUDE.md`](https://github.com/ha-parcel-integrations/ha-carrier-template/blob/main/scaffold/CLAUDE.md).
+This repo follows it exactly.
+
 **Suite-wide tripwires, kept inline on purpose:**
 - **First refresh in `__init__.py`, before `async_forward_entry_setups`** — from
   a forwarded platform HA can't catch `ConfigEntryNotReady` cleanly.
