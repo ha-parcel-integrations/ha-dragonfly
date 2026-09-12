@@ -404,7 +404,7 @@ def test_sort_parcels_puts_unparseable_last():
 
 
 # ---------------------------------------------------------------------------
-# Dynamic polling (dynamic-polling.md Section 2.1, barcode-based) — pure
+# Dynamic polling (barcode-based) — pure
 # helpers
 # ---------------------------------------------------------------------------
 

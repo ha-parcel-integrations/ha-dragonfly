@@ -64,9 +64,11 @@ window 00:00–06:00 local with two catch-up anchors, 15 min hot tier for an
 `out_for_delivery` parcel within an hour of `planned_from` (or with none at
 all), 45 min mid tier otherwise, full stop (`update_interval = None`) when
 nothing is tracked or everything tracked is delivered — resumes on the next
-options-triggered refresh (adding a parcel back). See
-`carrier-research/dynamic-polling.md` for the full algorithm and
-`ha-carrier-template`'s coordinator for the canonical shape this mirrors.
+options-triggered refresh (adding a parcel back). A code confirmed delivered
+is also dropped from the fetch itself from the next cycle on (it stays in the
+options list, sensor and retention window via its cached payload — only the
+request stops). See `ha-carrier-template`'s coordinator for the canonical
+shape this mirrors.
 
 Concurrent per-parcel `asyncio.gather`; **`_raw_cache`** keyed on tracking code so
 a transient error or an unknown-code blip keeps the last good payload, and a
