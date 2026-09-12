@@ -22,10 +22,10 @@ def test_normalize_tracking_code_strips_and_uppercases():
     assert normalize_tracking_code(None) == ""
 
 
-def test_valid_tracking_code_bounds():
+def test_valid_tracking_code_accepts_any_non_empty_code():
     assert valid_tracking_code("INTLCMB2C000123456")
-    assert not valid_tracking_code("ABC")  # too short
-    assert not valid_tracking_code("A" * 31)  # too long
+    assert valid_tracking_code("not a real shape at all")
+    assert not valid_tracking_code("")
 
 
 async def test_user_flow_shows_country_form(hass):

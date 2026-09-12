@@ -33,12 +33,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# A Dragonfly Track & Trace code as printed on the shipping confirmation or
-# the missed-delivery card. Upper-case alphanumeric; the consumer site strips
-# everything else before querying, so we normalise the same way and accept a
-# generous length range.
-_TRACKING_CODE_RE = re.compile(r"^[A-Z0-9]{6,30}$")
-
 # First-run form: pick which country's Dragonfly backend this hub talks to.
 # Selector option values double as hassfest translation keys, which must be
 # lowercase — COUNTRIES/CONF_COUNTRY's actual stored value stays upper-case
@@ -63,8 +57,8 @@ def normalize_tracking_code(value: str) -> str:
 
 
 def valid_tracking_code(value: str) -> bool:
-    """Whether ``value`` looks like a Dragonfly tracking code."""
-    return bool(_TRACKING_CODE_RE.match(value))
+    """Accept every non-empty code; Dragonfly's real formats vary too much to gate on a guessed shape."""
+    return bool(value)
 
 
 def _current_parcels(entry: ConfigEntry) -> list[dict[str, str]]:
