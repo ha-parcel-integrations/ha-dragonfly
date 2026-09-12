@@ -602,6 +602,50 @@ async def test_update_merges_multiple_parcels(hass):
     assert coordinator.last_success_time is not None
 
 
+async def test_delivered_code_skipped_from_fetch(hass):
+    """A delivered code stops being fetched from the next cycle on."""
+    entry = _entry_with([
+        {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
+        {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
+    ])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.side_effect = lambda code: (
+        active_sample() if code == "INTLCMB2C000999999" else delivered_sample()
+    )
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+    assert client.async_get_parcel.call_count == 2
+    assert coordinator.delivered_codes == {"INTLCMB2C000123456"}
+
+    client.async_get_parcel.reset_mock()
+    data = await coordinator._async_update_data()
+
+    # Only the still-active code is fetched — the delivered one is skipped.
+    client.async_get_parcel.assert_called_once_with("INTLCMB2C000999999")
+    assert any(
+        p["barcode"] == "INTLCMB2C000123456" for p in coordinator.delivered
+    )
+    assert data[0]["barcode"] == "INTLCMB2C000999999"
+
+
+async def test_delivered_code_forgotten_when_untracked(hass):
+    """Untracking a delivered code drops it from the skip set too."""
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = delivered_sample()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    await coordinator._async_update_data()
+    assert coordinator.delivered_codes == {"INTLCMB2C000123456"}
+
+    hass.config_entries.async_update_entry(entry, options={CONF_PARCELS: []})
+    await coordinator._async_update_data()
+    assert coordinator.delivered_codes == set()
+
+
 async def test_update_uses_the_coordinator_country(hass):
     """The coordinator's ``country`` reaches normalize_parcel end-to-end."""
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
@@ -849,10 +893,13 @@ async def test_update_fires_delivery_time_changed_event(hass):
 
 async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
     """A poll served entirely from cache must not look like a success."""
+    # Must still be active (not delivered) — a delivered code is skipped from
+    # the fetch entirely from the next cycle on, which is covered separately
+    # by test_delivered_code_skipped_from_fetch.
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
     entry.add_to_hass(hass)
     client = AsyncMock()
-    client.async_get_parcel.return_value = delivered_sample()
+    client.async_get_parcel.return_value = active_sample()
     coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
     await coordinator._async_update_data()
     stamp = coordinator.last_success_time
