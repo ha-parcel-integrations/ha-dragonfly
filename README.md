@@ -9,7 +9,7 @@
 
 A custom Home Assistant integration that tracks your [Dragonfly Shipping](https://dragonflyshipping.nl) parcels — Netherlands, Australia or Canada (Intelcom). No account is needed — you enter the Track & Trace code yourself, just like on the Dragonfly/Intelcom website. Not even a postal code is required.
 
-Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
+Part of the [ha-parcel-integrations](https://ha-parcel-integrations.io) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
 ## Contents
 
@@ -177,17 +177,17 @@ logger:
 
 ## Related integrations
 
-This integration is part of [**ha-parcel-integrations**](https://github.com/ha-parcel-integrations) — a family of
+This integration is part of [**ha-parcel-integrations**](https://ha-parcel-integrations.io) — a family of
 parcel-carrier integrations that all publish the same canonical parcel format,
 statuses and events.
 
 - [**Parcel Aggregator**](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) rolls every installed carrier
   up into one set of sensors.
-- Browse [the organisation](https://github.com/ha-parcel-integrations) for the current list of supported carriers.
+- Browse [the organisation](https://ha-parcel-integrations.io) for the current list of supported carriers.
 
 ## Credits
 
-This integration was originally created by [@HummelsTech](https://github.com/HummelsTech), who built it from the ground up and generously transferred it to the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) organisation so it can be maintained alongside the other parcel integrations. Thank you, Alwin! He remains a codeowner of the integration.
+This integration was originally created by [@HummelsTech](https://github.com/HummelsTech), who built it from the ground up and generously transferred it to the [ha-parcel-integrations](https://ha-parcel-integrations.io) organisation so it can be maintained alongside the other parcel integrations. Thank you, Alwin! He remains a codeowner of the integration.
 
 ## Disclaimer
 
