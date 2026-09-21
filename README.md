@@ -191,7 +191,13 @@ This integration was originally created by [@HummelsTech](https://github.com/Hum
 
 ## Disclaimer
 
-This integration uses the same public tracking endpoint as the Dragonfly consumer website. It is not affiliated with, endorsed by, or supported by Dragonfly Shipping / Intelcom. Be gentle with the polling interval.
+This is an independent, community-built project. It is not affiliated with, endorsed by, sponsored by, or supported by Dragonfly Shipping, Home Assistant, or any other third party referenced in this project. Please don't contact Dragonfly Shipping for support with this integration.
+
+All third-party trademarks, trade names, product names, logos, and other brand assets are the property of their respective owners. References to them are solely to identify the relevant carrier or service and do not imply affiliation, sponsorship, or endorsement. Nothing in this project grants or implies any licence or right to use third-party brand assets.
+
+This integration may rely on public, unofficial, or undocumented carrier interfaces, accessed with your own account or API key where required. These may change or be withdrawn without notice and may be subject to Dragonfly Shipping's terms. Data is sent only to Dragonfly Shipping's own services or those of its group; this project operates no servers of its own. You are responsible for ensuring that your use complies with applicable law and those terms. Use is at your own risk; see the [licence](LICENSE) for warranty limitations.
+
+This integration uses the same public tracking endpoint as the Dragonfly consumer website. Be gentle with the polling interval.
 
 ## Contributing
 
