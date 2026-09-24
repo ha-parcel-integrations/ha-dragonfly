@@ -88,7 +88,7 @@ extra request (it ships in the same response).
 diagnostic `last_update`), `button` (refresh), `calendar` (deliveries, read-only,
 enabled by default), device triggers. **No pickup-point sensors** — Dragonfly has
 no parcel-shop network, so `at_pickup_point` never occurs and GLS's
-`en_route_to_parcel_shop` / `awaiting_pickup` sensors were dropped.
+`en_route_to_pickup_point` / `awaiting_pickup` sensors were dropped.
 
 ## Running tests
 
