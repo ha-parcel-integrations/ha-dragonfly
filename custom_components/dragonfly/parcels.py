@@ -237,7 +237,8 @@ def normalize_parcel(
     (that flag only gates the *consumer site's* display, e.g. a day-level
     estimate while still in transit; HA users want it anyway). The window
     end prefers ``live_buffered_eta`` — the courier's GPS-driven revision —
-    over the static ``buffered_eta`` when the API has one.
+    over the static ``buffered_eta`` when the API has one; the pair is
+    ordered so ``planned_from`` never falls after ``planned_to``.
 
     ``history`` is the optional per-parcel status timeline — opt-in, default
     off (``None``), kept identical to the other suite carriers. Dragonfly
@@ -262,8 +263,12 @@ def normalize_parcel(
     eta_to = _to_iso_timestamp(
         raw.get("live_buffered_eta") or public_eta.get("to") or raw.get("buffered_eta")
     )
-    if eta_from and eta_to and _parse_iso(eta_to) == _parse_iso(eta_from):
+    from_dt, to_dt = _parse_iso(eta_from), _parse_iso(eta_to)
+    if from_dt and to_dt and to_dt == from_dt:
         eta_to = None
+    elif from_dt and to_dt and to_dt < from_dt:
+        # The courier's revision can land before the static estimate too.
+        eta_from, eta_to = eta_to, eta_from
 
     # ``last_mile_pickup`` is a driver-comes-to-you task (e.g. a return
     # pickup), not a pickup-point delivery — Dragonfly delivers to the door

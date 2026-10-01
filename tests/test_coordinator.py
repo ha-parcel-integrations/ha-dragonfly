@@ -359,6 +359,21 @@ def test_normalize_live_buffered_eta_takes_priority_over_buffered_eta():
     assert parcel["planned_to"] == "2026-08-08T15:50:24.000Z"
 
 
+def test_normalize_live_buffered_eta_earlier_than_eta_is_ordered():
+    """Issue #7: the courier's revision landed before the static estimate,
+
+    which left ``planned_from`` after ``planned_to``.
+    """
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["eta"] = "2026-10-01T15:59:16.000000+02:00"
+    raw["buffered_eta"] = "2026-10-01T13:59:16.000Z"
+    raw["live_buffered_eta"] = "2026-10-01T13:05:00.000Z"
+    parcel = normalize_parcel(raw)
+    assert parcel["planned_from"] == "2026-10-01T13:05:00.000Z"
+    assert parcel["planned_to"] == "2026-10-01T15:59:16.000000+02:00"
+
+
 def test_normalize_in_transit_day_level_eta_is_surfaced():
     """Modeled on a live in-transit parcel (2026-08-08): ``showEta: false``,
 
