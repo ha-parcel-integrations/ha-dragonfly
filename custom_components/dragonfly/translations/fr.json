@@ -1,0 +1,154 @@
+{
+  "title": "Dragonfly",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer Dragonfly",
+        "description": "Le suivi Dragonfly ne nécessite ni compte ni code postal. Choisissez le pays dans lequel vos colis sont livrés — ce choix ne peut plus être modifié ensuite. Ajoutez des colis après coup via les options de l'intégration ou le service `dragonfly.track_parcel`.",
+        "data": {
+          "country": "Pays"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dragonfly est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Dragonfly",
+        "sections": {
+          "parcels": {
+            "name": "Colis",
+            "data": {
+              "add": "Ajouter un colis",
+              "remove": "Supprimer des colis"
+            },
+            "data_description": {
+              "add": "Saisissez un code Track & Trace Dragonfly pour commencer à le suivre. Vous le trouvez sur la confirmation d'expédition ou sur l'avis de passage."
+            }
+          },
+          "delivered": {
+            "name": "Colis livrés",
+            "data": {
+              "delivered_filter_type": "Filtrer par",
+              "delivered_filter_amount": "Quantité"
+            },
+            "data_description": {
+              "delivered_filter_type": "Afficher les colis livrés des X derniers jours, ou se limiter aux X plus récents.",
+              "delivered_filter_amount": "Nombre de jours ou de colis à afficher."
+            }
+          },
+          "history": {
+            "name": "Historique des colis",
+            "data": {
+              "include_history": "Inclure l'historique des statuts"
+            },
+            "data_description": {
+              "include_history": "Ajoute un attribut d'historique par colis répertoriant chaque mise à jour de statut (horodatage, statut, texte d'origine). Désactivé par défaut."
+            }
+          }
+        },
+        "menu_options": {
+          "parcels": "Colis",
+          "settings": "Paramètres"
+        }
+      },
+      "parcels": {
+        "title": "Gérer les colis",
+        "data": {
+          "tracking_codes": "Codes de suivi"
+        }
+      },
+      "settings": {
+        "title": "Paramètres",
+        "data": {
+          "delivered_filter_type": "Colis livrés : filtrer par",
+          "delivered_filter_amount": "Colis livrés : nombre",
+          "include_history": "Inclure l'historique des statuts"
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Cela ne ressemble pas à un code de suivi Dragonfly.",
+      "already_tracked": "Ce colis est déjà suivi."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "nl": "Pays-Bas",
+        "au": "Australie",
+        "ca": "Canada"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Jours",
+        "parcels": "Nombre de colis"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Suivre un colis",
+      "description": "Commencer à suivre un colis Dragonfly à partir de son code Track & Trace.",
+      "fields": {
+        "tracking_code": {
+          "name": "Code de suivi",
+          "description": "Le code Track & Trace Dragonfly."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Ne plus suivre un colis",
+      "description": "Arrêter de suivre un colis Dragonfly à partir de son code Track & Trace.",
+      "fields": {
+        "tracking_code": {
+          "name": "Code de suivi",
+          "description": "Le code Track & Trace Dragonfly à ne plus suivre."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Un colis a été enregistré",
+      "parcel_status_changed": "Le statut d'un colis a changé",
+      "parcel_delivered": "Un colis a été livré",
+      "parcel_delivery_time_changed": "L'heure de livraison prévue d'un colis a changé"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Actualiser"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Livraisons"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Colis entrants",
+        "unit_of_measurement": "colis"
+      },
+      "next_delivery": {
+        "name": "Prochaine livraison"
+      },
+      "delivered_parcels": {
+        "name": "Colis livrés",
+        "unit_of_measurement": "colis"
+      },
+      "last_update": {
+        "name": "Dernière mise à jour réussie"
+      },
+      "parcel": {
+        "name": "Colis {barcode}"
+      }
+    }
+  }
+}
