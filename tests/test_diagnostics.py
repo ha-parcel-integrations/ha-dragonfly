@@ -1,4 +1,5 @@
 """Tests for Dragonfly diagnostics."""
+
 from unittest.mock import MagicMock
 
 from custom_components.dragonfly.diagnostics import async_get_config_entry_diagnostics

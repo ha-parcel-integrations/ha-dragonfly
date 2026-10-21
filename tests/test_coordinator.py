@@ -1,7 +1,11 @@
 """Tests for the Dragonfly coordinator logic."""
-from datetime import datetime, timedelta, timezone
+
+import asyncio
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -44,7 +48,7 @@ from .payloads import active_sample, delivered_sample, status
 
 
 @pytest.mark.parametrize(
-    "step,expected",
+    ("step", "expected"),
     [
         (1, ParcelStatus.REGISTERED),
         (2, ParcelStatus.IN_TRANSIT),
@@ -110,7 +114,9 @@ def test_status_label_none_cases():
 
 
 def test_status_label_strips_link_markup():
-    status = {"labels": {"shortLabel": {"nl": "Zie [link https://x.example]de site[/link]"}}}
+    status = {
+        "labels": {"shortLabel": {"nl": "Zie [link https://x.example]de site[/link]"}}
+    }
     assert status_label(status) == "Zie de site"
 
 
@@ -123,8 +129,10 @@ def test_status_label_fills_address_tokens():
 
 
 def test_status_label_keeps_unknown_tokens():
-    status = {"labels": {"shortLabel": {"nl": "Bij {pickup_name}"}},
-              "package_location": {"address": {"city": "Rotterdam"}}}
+    status = {
+        "labels": {"shortLabel": {"nl": "Bij {pickup_name}"}},
+        "package_location": {"address": {"city": "Rotterdam"}},
+    }
     assert status_label(status) == "Bij {pickup_name}"
 
 
@@ -181,8 +189,7 @@ def test_normalize_delivered_parcel():
     assert parcel["planned_from"] is None
     assert parcel["planned_to"] is None
     assert parcel["url"] == (
-        "https://dragonflyshipping.nl/nl/volg-je-pakket/"
-        "?tracking-id=INTLCMB2C000123456"
+        "https://dragonflyshipping.nl/nl/volg-je-pakket/?tracking-id=INTLCMB2C000123456"
     )
     assert parcel["history"] is None  # opt-in, default off
 
@@ -202,8 +209,7 @@ def test_normalize_delivered_parcel_ca():
     parcel = normalize_parcel(delivered_sample(), country="CA")
     assert parcel["raw_status"] == "Delivered"
     assert parcel["url"] == (
-        "https://intelcom.ca/en/track-your-package/"
-        "?tracking-id=INTLCMB2C000123456"
+        "https://intelcom.ca/en/track-your-package/?tracking-id=INTLCMB2C000123456"
     )
 
 
@@ -302,14 +308,26 @@ def test_normalize_real_payload_epoch_ms_and_eta_fallback():
             "etaType": "time",
             "isDelivered": False,
             "labels": {
-                "shortLabel": {"en": "On our way to you!", "fr": "", "nl": "We zijn onderweg naar je!"},
+                "shortLabel": {
+                    "en": "On our way to you!",
+                    "fr": "",
+                    "nl": "We zijn onderweg naar je!",
+                },
             },
         },
         "status_list": [
-            {"step": 3, "status": 300, "timestamp": 1784203767167,
-             "labels": {"shortLabel": {"nl": "We zijn onderweg naar je!"}}},
-            {"step": 1, "status": 0, "timestamp": 1784153769791,
-             "labels": {"shortLabel": {"nl": "Je pakket is veilig bij Dragonfly"}}},
+            {
+                "step": 3,
+                "status": 300,
+                "timestamp": 1784203767167,
+                "labels": {"shortLabel": {"nl": "We zijn onderweg naar je!"}},
+            },
+            {
+                "step": 1,
+                "status": 0,
+                "timestamp": 1784153769791,
+                "labels": {"shortLabel": {"nl": "Je pakket is veilig bij Dragonfly"}},
+            },
         ],
     }
     parcel = normalize_parcel(raw, include_history=True)
@@ -423,8 +441,6 @@ def test_sort_parcels_puts_unparseable_last():
 # helpers
 # ---------------------------------------------------------------------------
 
-UTC = timezone.utc
-
 
 def test_quiet_window_is_midnight_to_six():
     assert _in_quiet_window(datetime(2026, 1, 1, 0, 0, tzinfo=UTC))
@@ -490,7 +506,10 @@ def test_tier_is_mid_before_lookahead_of_planned_from():
 
 
 def test_next_update_interval_is_none_for_none_tier():
-    assert _next_update_interval(datetime(2026, 1, 1, 12, tzinfo=UTC), None, "entry-1") is None
+    assert (
+        _next_update_interval(datetime(2026, 1, 1, 12, tzinfo=UTC), None, "entry-1")
+        is None
+    )
 
 
 def test_daytime_candidate_outside_window_is_tier_plus_stagger():
@@ -598,10 +617,12 @@ def _entry_with(parcels: list[dict]) -> MockConfigEntry:
 
 
 async def test_update_merges_multiple_parcels(hass):
-    entry = _entry_with([
-        {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
-        {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
-    ])
+    entry = _entry_with(
+        [
+            {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
+            {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
+        ]
+    )
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.side_effect = lambda code: (
@@ -619,10 +640,12 @@ async def test_update_merges_multiple_parcels(hass):
 
 async def test_delivered_code_skipped_from_fetch(hass):
     """A delivered code stops being fetched from the next cycle on."""
-    entry = _entry_with([
-        {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
-        {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
-    ])
+    entry = _entry_with(
+        [
+            {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
+            {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
+        ]
+    )
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.side_effect = lambda code: (
@@ -639,9 +662,7 @@ async def test_delivered_code_skipped_from_fetch(hass):
 
     # Only the still-active code is fetched — the delivered one is skipped.
     client.async_get_parcel.assert_called_once_with("INTLCMB2C000999999")
-    assert any(
-        p["barcode"] == "INTLCMB2C000123456" for p in coordinator.delivered
-    )
+    assert any(p["barcode"] == "INTLCMB2C000123456" for p in coordinator.delivered)
     assert data[0]["barcode"] == "INTLCMB2C000999999"
 
 
@@ -705,7 +726,6 @@ async def test_update_keeps_cached_on_error(hass):
 
 
 async def test_update_all_fail_raises(hass):
-    from homeassistant.helpers.update_coordinator import UpdateFailed
 
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
     entry.add_to_hass(hass)
@@ -718,10 +738,12 @@ async def test_update_all_fail_raises(hass):
 
 
 async def test_update_skips_items_missing_fields(hass):
-    entry = _entry_with([
-        {CONF_TRACKING_CODE: ""},  # skipped
-        {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
-    ])
+    entry = _entry_with(
+        [
+            {CONF_TRACKING_CODE: ""},  # skipped
+            {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
+        ]
+    )
     entry.add_to_hass(hass)
     client = AsyncMock()
     client.async_get_parcel.return_value = delivered_sample()
@@ -746,7 +768,6 @@ async def test_update_backfills_missing_tracking_id(hass):
 
 
 async def test_update_event_carries_device_id(hass):
-    from homeassistant.helpers import device_registry as dr
 
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
     entry.add_to_hass(hass)
@@ -805,7 +826,9 @@ async def test_update_fires_delivered_event_not_status_changed(hass):
     delivered = []
     changed = []
     hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
-    hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: changed.append(e))
+    hass.bus.async_listen(
+        f"{DOMAIN}_parcel_status_changed", lambda e: changed.append(e)
+    )
 
     client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
     await coordinator._async_update_data()
@@ -926,9 +949,8 @@ async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
 
 
 async def test_delivered_filter_days_and_count(hass):
-    from datetime import timedelta
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     recent = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
     old = (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
     delivered = [
@@ -942,7 +964,8 @@ async def test_delivered_filter_days_and_count(hass):
 
     # days: 7-day window drops the 30-day-old one.
     hass.config_entries.async_update_entry(
-        entry, options={CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 7}
+        entry,
+        options={CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 7},
     )
     kept = coordinator._apply_delivered_filter(delivered)
     assert {p["barcode"] for p in kept} == {"RECENT"}
@@ -950,7 +973,10 @@ async def test_delivered_filter_days_and_count(hass):
     # parcels: keep only the most recent 1.
     hass.config_entries.async_update_entry(
         entry,
-        options={CONF_DELIVERED_FILTER_TYPE: "parcels", CONF_DELIVERED_FILTER_AMOUNT: 1},
+        options={
+            CONF_DELIVERED_FILTER_TYPE: "parcels",
+            CONF_DELIVERED_FILTER_AMOUNT: 1,
+        },
     )
     kept = coordinator._apply_delivered_filter(delivered)
     assert kept == delivered[:1]
@@ -972,12 +998,13 @@ async def test_update_prunes_cache_for_untracked_parcels(hass):
 
 async def test_update_fetches_parcels_concurrently(hass):
     """All tracked parcels are fetched via one gather, not one-by-one."""
-    import asyncio
 
-    entry = _entry_with([
-        {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
-        {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
-    ])
+    entry = _entry_with(
+        [
+            {CONF_TRACKING_CODE: "INTLCMB2C000999999"},
+            {CONF_TRACKING_CODE: "INTLCMB2C000123456"},
+        ]
+    )
     entry.add_to_hass(hass)
     in_flight = 0
     peak = 0

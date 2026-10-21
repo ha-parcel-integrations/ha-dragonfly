@@ -1,4 +1,5 @@
 """Tests for the Dragonfly API client."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,7 +31,12 @@ def _success_envelope(result: dict) -> dict:
 def _not_found_envelope() -> dict:
     return {
         "success": False,
-        "data": {"status": 404, "statusText": "Not Found", "result": None, "code": "not_found"},
+        "data": {
+            "status": 404,
+            "statusText": "Not Found",
+            "result": None,
+            "code": "not_found",
+        },
     }
 
 
@@ -58,7 +64,9 @@ async def test_get_parcel_uses_the_configured_country_host():
 
 
 async def test_get_parcel_returns_none_on_not_found():
-    client = DragonflyApiClient(_session_returning(200, _not_found_envelope()), host="dragonflyshipping.nl")
+    client = DragonflyApiClient(
+        _session_returning(200, _not_found_envelope()), host="dragonflyshipping.nl"
+    )
     assert await client.async_get_parcel("UNKNOWN123") is None
 
 
@@ -72,19 +80,25 @@ async def test_get_parcel_returns_none_on_hollow_success():
 
 
 async def test_get_parcel_raises_on_error_status():
-    client = DragonflyApiClient(_session_returning(500, {}), host="dragonflyshipping.nl")
+    client = DragonflyApiClient(
+        _session_returning(500, {}), host="dragonflyshipping.nl"
+    )
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
 
 async def test_get_parcel_raises_on_unparseable_body():
-    client = DragonflyApiClient(_session_returning(200, "not json"), host="dragonflyshipping.nl")
+    client = DragonflyApiClient(
+        _session_returning(200, "not json"), host="dragonflyshipping.nl"
+    )
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
 
 async def test_get_parcel_raises_on_non_object_body():
-    client = DragonflyApiClient(_session_returning(200, ["not", "a", "dict"]), host="dragonflyshipping.nl")
+    client = DragonflyApiClient(
+        _session_returning(200, ["not", "a", "dict"]), host="dragonflyshipping.nl"
+    )
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 
@@ -100,7 +114,9 @@ async def test_get_parcel_raises_on_unknown_error_envelope():
 
 
 async def test_get_parcel_raises_on_error_envelope_without_data():
-    client = DragonflyApiClient(_session_returning(200, {"success": False}), host="dragonflyshipping.nl")
+    client = DragonflyApiClient(
+        _session_returning(200, {"success": False}), host="dragonflyshipping.nl"
+    )
     with pytest.raises(DragonflyApiError):
         await client.async_get_parcel("INTLCM123")
 

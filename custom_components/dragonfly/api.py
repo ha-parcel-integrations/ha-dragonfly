@@ -1,4 +1,5 @@
 """Dragonfly Shipping public tracking API client."""
+
 from __future__ import annotations
 
 import logging
@@ -46,7 +47,9 @@ class DragonflyApiClient:
         or non-2xx status raises :class:`DragonflyApiError`; network errors
         propagate as ``aiohttp.ClientError``.
         """
-        url = TRACKING_API_URL_TEMPLATE.format(host=self._host, tracking_code=tracking_code)
+        url = TRACKING_API_URL_TEMPLATE.format(
+            host=self._host, tracking_code=tracking_code
+        )
         async with self._session.get(url) as response:
             if response.status != 200:
                 raise DragonflyApiError(f"HTTP {response.status}")

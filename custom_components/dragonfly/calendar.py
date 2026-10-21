@@ -1,4 +1,5 @@
 """Calendar platform for the Dragonfly parcel tracker integration."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -19,8 +20,6 @@ PARALLEL_UPDATES = 0
 _DEFAULT_EVENT_DURATION = timedelta(hours=1)
 
 
-
-
 def _parse(value: str | None) -> datetime | None:
     """Parse an ISO 8601 string into a timezone-aware datetime, or ``None``."""
     if not value:
@@ -39,10 +38,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Dragonfly deliveries calendar from a config entry."""
-    async_add_entities([DragonflyDeliveriesCalendar(entry.runtime_data.coordinator, entry)])
+    async_add_entities(
+        [DragonflyDeliveriesCalendar(entry.runtime_data.coordinator, entry)]
+    )
 
 
-class DragonflyDeliveriesCalendar(CoordinatorEntity[DragonflyCoordinator], CalendarEntity):
+class DragonflyDeliveriesCalendar(
+    CoordinatorEntity[DragonflyCoordinator], CalendarEntity
+):
     """A read-only calendar of expected Dragonfly deliveries.
 
     Each active tracked parcel with a known delivery moment becomes an event.

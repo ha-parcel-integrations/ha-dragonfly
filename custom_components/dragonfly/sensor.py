@@ -1,8 +1,9 @@
 """Sensor platform for the Dragonfly Shipping parcel tracker integration."""
+
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -29,8 +30,6 @@ _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 0
 
 
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: DragonflyConfigEntry,
@@ -42,9 +41,7 @@ async def async_setup_entry(
     # than (too late) from this forwarded platform.
     coordinator = entry.runtime_data.coordinator
 
-    current_barcodes: set[str] = {
-        p.get("barcode", "") for p in coordinator.data or []
-    }
+    current_barcodes: set[str] = {p.get("barcode", "") for p in coordinator.data or []}
     entry_id = entry.entry_id
 
     # Remove per-parcel sensors from the registry whose barcode is no longer
@@ -64,7 +61,7 @@ async def async_setup_entry(
             and entity_entry.unique_id.startswith(f"{entry_id}_")
             and entity_entry.unique_id not in non_parcel_unique_ids
         ):
-            barcode = entity_entry.unique_id[len(f"{entry_id}_"):]
+            barcode = entity_entry.unique_id[len(f"{entry_id}_") :]
             if barcode not in current_barcodes:
                 registry.async_remove(entity_entry.entity_id)
 
@@ -73,10 +70,10 @@ async def async_setup_entry(
             coordinator, entry, async_add_entities, current_barcodes
         ),
     ]
-    for parcel in coordinator.data or []:
-        entities.append(
-            DragonflyParcelSensor(coordinator, entry, parcel.get("barcode", ""))
-        )
+    entities.extend(
+        DragonflyParcelSensor(coordinator, entry, parcel.get("barcode", ""))
+        for parcel in coordinator.data or []
+    )
     entities.append(DragonflyNextDeliverySensor(coordinator, entry))
     entities.append(DragonflyDeliveredParcelsSensor(coordinator, entry))
     entities.append(DragonflyLastUpdateSensor(coordinator, entry))
@@ -199,9 +196,7 @@ class DragonflyNextDeliverySensor(
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_attribution = ATTRIBUTION
 
-    def __init__(
-        self, coordinator: DragonflyCoordinator, entry: ConfigEntry
-    ) -> None:
+    def __init__(self, coordinator: DragonflyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_next_delivery"
@@ -214,9 +209,9 @@ class DragonflyNextDeliverySensor(
             if not moment_str:
                 continue
             try:
-                dt = datetime.fromisoformat(moment_str.replace("Z", "+00:00"))
+                dt = datetime.fromisoformat(moment_str)
                 if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
+                    dt = dt.replace(tzinfo=UTC)
                 result.append((dt, parcel))
             except ValueError:
                 _LOGGER.debug("Could not parse delivery moment: %s", moment_str)
@@ -253,9 +248,7 @@ class DragonflyDeliveredParcelsSensor(
     _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
-    def __init__(
-        self, coordinator: DragonflyCoordinator, entry: ConfigEntry
-    ) -> None:
+    def __init__(self, coordinator: DragonflyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_delivered_parcels"
@@ -272,9 +265,7 @@ class DragonflyDeliveredParcelsSensor(
         return {"parcels": self.coordinator.delivered}
 
 
-class DragonflyLastUpdateSensor(
-    CoordinatorEntity[DragonflyCoordinator], SensorEntity
-):
+class DragonflyLastUpdateSensor(CoordinatorEntity[DragonflyCoordinator], SensorEntity):
     """Diagnostic sensor reporting when Dragonfly was last polled successfully."""
 
     _attr_has_entity_name = True
@@ -283,9 +274,7 @@ class DragonflyLastUpdateSensor(
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_attribution = ATTRIBUTION
 
-    def __init__(
-        self, coordinator: DragonflyCoordinator, entry: ConfigEntry
-    ) -> None:
+    def __init__(self, coordinator: DragonflyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_last_update"

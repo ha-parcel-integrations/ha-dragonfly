@@ -8,6 +8,7 @@ exactly one place to fix.
 Every helper returns a **fresh** dict, so a test may mutate what it gets back
 without leaking into the next one.
 """
+
 from __future__ import annotations
 
 ACTIVE_CODE = "INTLCMB2C000999999"
@@ -31,8 +32,14 @@ def status(step: int, ts: str, nl: str, en: str) -> dict:
 def delivered_sample(code: str = DELIVERED_CODE) -> dict:
     """A representative Dragonfly tracking result for a delivered parcel."""
     last = status(4, "2026-04-29T13:12:42Z", "Afgeleverd", "Delivered")
-    last.update({"isDelivered": True, "showEta": False, "etaType": "none",
-                 "task_type": "last_mile_delivery"})
+    last.update(
+        {
+            "isDelivered": True,
+            "showEta": False,
+            "etaType": "none",
+            "task_type": "last_mile_delivery",
+        }
+    )
     return {
         "tracking_id": code,
         "client_code": "ACME",
@@ -43,7 +50,12 @@ def delivered_sample(code: str = DELIVERED_CODE) -> dict:
         "status_list": [
             status(4, "2026-04-29T13:12:42Z", "Afgeleverd", "Delivered"),
             status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery"),
-            status(2, "2026-04-28T15:52:17Z", "In het sorteercentrum", "At the sorting facility"),
+            status(
+                2,
+                "2026-04-28T15:52:17Z",
+                "In het sorteercentrum",
+                "At the sorting facility",
+            ),
             status(1, "2026-04-27T23:03:58Z", "Zending ontvangen", "Parcel received"),
         ],
     }
@@ -53,8 +65,14 @@ def active_sample(code: str = ACTIVE_CODE) -> dict:
     """An out-for-delivery parcel with an ETA window."""
     sample = delivered_sample(code)
     last = status(3, "2026-04-29T08:46:00Z", "Bij de bezorger", "Out for delivery")
-    last.update({"isDelivered": False, "showEta": True, "etaType": "time",
-                 "task_type": "last_mile_delivery"})
+    last.update(
+        {
+            "isDelivered": False,
+            "showEta": True,
+            "etaType": "time",
+            "task_type": "last_mile_delivery",
+        }
+    )
     sample["last_status"] = last
     sample["public_eta"] = {
         "from": "2026-04-29T13:00:00Z",

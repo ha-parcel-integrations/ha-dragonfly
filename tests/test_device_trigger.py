@@ -1,4 +1,5 @@
 """Tests for Dragonfly device triggers."""
+
 from custom_components.dragonfly.const import DOMAIN
 from custom_components.dragonfly.device_trigger import (
     TRIGGER_EVENTS,

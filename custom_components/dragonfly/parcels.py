@@ -6,11 +6,12 @@ the delivered filter — out of ``coordinator.py`` lets it be unit-tested as pla
 functions and mirrors the layout every other carrier in the suite uses. The
 coordinator only fetches, caches and fires events.
 """
+
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import logging
 import re
-from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -33,10 +34,10 @@ _LOGGER = logging.getLogger(__name__)
 # ``problem``. The same value appears on the top-level ``last_status`` and on
 # each ``status_list`` entry, so one map drives both.
 _STEP_MAP: dict[int, ParcelStatus] = {
-    1: ParcelStatus.REGISTERED,        # Zending aangemeld / ontvangen
-    2: ParcelStatus.IN_TRANSIT,        # In het sorteercentrum / onderweg
+    1: ParcelStatus.REGISTERED,  # Zending aangemeld / ontvangen
+    2: ParcelStatus.IN_TRANSIT,  # In het sorteercentrum / onderweg
     3: ParcelStatus.OUT_FOR_DELIVERY,  # Bij de bezorger
-    4: ParcelStatus.DELIVERED,         # Afgeleverd
+    4: ParcelStatus.DELIVERED,  # Afgeleverd
 }
 
 # Points at the pre-filled issue template rather than a blank form, so a
@@ -115,11 +116,11 @@ def _parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -136,7 +137,7 @@ def _to_iso_timestamp(value) -> str | None:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+            return datetime.fromtimestamp(value / 1000, tz=UTC).isoformat()
         except (OverflowError, OSError, ValueError):
             return None
     return str(value)
@@ -157,7 +158,9 @@ def status_label(
     """
     if not isinstance(status, dict):
         return None
-    label_languages = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])["label_languages"]
+    label_languages = COUNTRIES.get(country, COUNTRIES[DEFAULT_COUNTRY])[
+        "label_languages"
+    ]
     for source in (status.get("labels"), status):
         if not isinstance(source, dict):
             continue
@@ -218,7 +221,9 @@ def build_history(
     return ordered[-max_events:]
 
 
-def _tracking_url(tracking_code: str | None, *, country: str = DEFAULT_COUNTRY) -> str | None:
+def _tracking_url(
+    tracking_code: str | None, *, country: str = DEFAULT_COUNTRY
+) -> str | None:
     """Construct the consumer tracking deep-link for a parcel, for the hub's country."""
     if not tracking_code:
         return None
@@ -285,7 +290,9 @@ def normalize_parcel(
         "status": map_parcel_status(step),
         "raw_status": status_label(last_status, country=country),
         "delivered": delivered,
-        "delivered_at": _to_iso_timestamp(last_status.get("timestamp")) if delivered else None,
+        "delivered_at": _to_iso_timestamp(last_status.get("timestamp"))
+        if delivered
+        else None,
         "planned_from": None if delivered else eta_from,
         "planned_to": None if delivered else eta_to,
         "pickup": is_pickup,
@@ -331,14 +338,12 @@ def apply_delivered_filter(parcels: list[dict], entry: ConfigEntry) -> list[dict
     only controls what the delivered sensor shows.
     """
     options = entry.options
-    filter_type = options.get(
-        CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-    )
+    filter_type = options.get(CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE)
     amount = int(
         options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
     )
     if filter_type == "days":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+        cutoff = datetime.now(UTC) - timedelta(days=amount)
         return [
             p
             for p in parcels
