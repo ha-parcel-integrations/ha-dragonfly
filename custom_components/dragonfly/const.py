@@ -1,6 +1,7 @@
 """Constants for the Dragonfly Shipping parcel tracker integration."""
 
 from enum import StrEnum
+from typing import TypedDict
 
 from homeassistant.const import Platform
 
@@ -58,6 +59,15 @@ TRACKING_API_URL_TEMPLATE = "https://{host}/cfworker/v3/tracking/{tracking_code}
 CONF_COUNTRY = "country"
 DEFAULT_COUNTRY = "NL"
 
+
+class CountryConfig(TypedDict):
+    """Per-country backend host, consumer deep-link and label language order."""
+
+    host: str
+    tracking_url: str
+    label_languages: tuple[str, ...]
+
+
 # code -> {host, tracking_url, label_languages}. Every country runs the exact
 # same cfworker platform on its own domain (confirmed by control-test: same
 # data-url pattern, byte-identical not_found envelope) — only the host, the
@@ -73,7 +83,7 @@ DEFAULT_COUNTRY = "NL"
 #
 # AU/CA payload shape (step catalogue, field mapping, timestamp format) is
 # assumed identical to NL's, not yet confirmed on a real parcel.
-COUNTRIES: dict[str, dict[str, object]] = {
+COUNTRIES: dict[str, CountryConfig] = {
     "NL": {
         "host": "dragonflyshipping.nl",
         "tracking_url": "https://dragonflyshipping.nl/nl/volg-je-pakket/?tracking-id={tracking_code}",
