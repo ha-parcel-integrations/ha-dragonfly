@@ -218,6 +218,21 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         return apply_delivered_filter(parcels, self.config_entry)
 
     async def _async_update_data(self) -> list[dict]:
+        try:
+            return await self._async_poll()
+        except Exception:
+            # The base class keeps the last interval after a failure, which
+            # after an overnight poll is the whole quiet window.
+            now = dt_util.now()
+            tier = _hottest_tier_minutes(self.data or [], now)
+            self.update_interval = _next_update_interval(
+                now,
+                tier if tier is not None else MID_INTERVAL_MINUTES,
+                self.config_entry.entry_id,
+            )
+            raise
+
+    async def _async_poll(self) -> list[dict]:
         codes = self._tracked()
 
         # Drop cache entries for parcels that were untracked, so the cache

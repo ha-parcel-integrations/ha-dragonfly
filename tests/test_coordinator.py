@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -735,6 +735,30 @@ async def test_update_all_fail_raises(hass):
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+async def test_failed_poll_drops_the_overnight_interval(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000123456"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.side_effect = DragonflyApiError("HTTP 500")
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+    coordinator.update_interval = timedelta(hours=5, minutes=40)
+
+    noon = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    with (
+        patch(
+            "custom_components.dragonfly.coordinator.dt_util.now",
+            return_value=noon,
+        ),
+        pytest.raises(UpdateFailed),
+    ):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval is not None
+    assert coordinator.update_interval <= timedelta(
+        minutes=MID_INTERVAL_MINUTES + STAGGER_MINUTES
+    )
 
 
 async def test_update_skips_items_missing_fields(hass):
