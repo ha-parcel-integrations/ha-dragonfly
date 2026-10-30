@@ -866,6 +866,39 @@ async def test_update_fires_delivered_event_not_status_changed(hass):
     assert delivered[0].data["status"] == ParcelStatus.DELIVERED
 
 
+async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(hass):
+    """The retention option limits the delivered sensor, never the events."""
+    older_code, newer_code = "INTLCMB2C000999999", "INTLCMB2C000123456"
+    entry = _entry_with(
+        [{CONF_TRACKING_CODE: older_code}, {CONF_TRACKING_CODE: newer_code}]
+    )
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_DELIVERED_FILTER_AMOUNT: 1}
+    )
+    client = AsyncMock()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    delivered = []
+    hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
+
+    client.async_get_parcel.side_effect = lambda code: active_sample(code)
+    await coordinator._async_update_data()
+
+    newer = delivered_sample(newer_code)
+    newer["last_status"]["timestamp"] = "2026-04-30T13:12:42Z"
+    client.async_get_parcel.side_effect = lambda code: (
+        delivered_sample(code) if code == older_code else newer
+    )
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert sorted(event.data["barcode"] for event in delivered) == sorted(
+        [older_code, newer_code]
+    )
+    assert [p["barcode"] for p in coordinator.delivered] == [newer_code]
+
+
 async def test_no_events_for_parcel_first_seen_delivered(hass):
     """A parcel already delivered when first tracked fires neither registered nor delivered."""
     entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])

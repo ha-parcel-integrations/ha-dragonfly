@@ -311,21 +311,22 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         # never permanently drop a code) rejoins it automatically.
         self._delivered_codes = {code for code, p in entries if p["delivered"]}
 
-        self.delivered = self._apply_delivered_filter(
-            sort_parcels_by_ts(delivered, "delivered_at", descending=True)
+        delivered_sorted = sort_parcels_by_ts(
+            delivered, "delivered_at", descending=True
         )
+        self.delivered = self._apply_delivered_filter(delivered_sorted)
         normalized_active = sort_parcels_by_ts(active, "planned_from")
 
-        # Incoming = active + delivered, combined so the transition to
-        # delivered is visible in one set (mirrors the other suite carriers).
-        incoming = normalized_active + self.delivered
-        self._fire_change_events(incoming)
+        # Events and remembered state cover every parcel; the retention option
+        # only limits what the delivered sensor shows.
+        tracked = normalized_active + delivered_sorted
+        self._fire_change_events(tracked)
         self._known_state = {
-            p["barcode"]: p["status"] for p in incoming if p.get("barcode")
+            p["barcode"]: p["status"] for p in tracked if p.get("barcode")
         }
         self._known_delivery_times = {
             p["barcode"]: (p.get("planned_from"), p.get("planned_to"))
-            for p in incoming
+            for p in tracked
             if p.get("barcode")
         }
 
