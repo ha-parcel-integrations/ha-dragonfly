@@ -1,6 +1,7 @@
 {
   "domain": "dragonfly",
   "name": "Dragonfly & Intelcom",
+  "categories": ["productivity_information"],
   "codeowners": ["@peter-mdf", "@HummelsTech"],
   "config_flow": true,
   "documentation": "https://github.com/ha-parcel-integrations/ha-dragonfly",
