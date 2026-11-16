@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/ha-parcel-integrations/ha-dragonfly.svg)](https://github.com/ha-parcel-integrations/ha-dragonfly/releases)
 [![Downloads](https://img.shields.io/github/downloads/ha-parcel-integrations/ha-dragonfly/total.svg)](https://github.com/ha-parcel-integrations/ha-dragonfly/releases)
-[![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Default-41BDF5.svg)](https://hacs.xyz)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > 📦 Part of [**ha-parcel-integrations**](https://ha-parcel-integrations.github.io/), a family of package-tracking integrations for Home Assistant that all publish the same parcel format, statuses and events, so they plug into cross-carrier automations and the optional [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator). Browse the other carriers on the website.
@@ -52,14 +52,14 @@ A custom Home Assistant integration that tracks your [Dragonfly Shipping](https:
 
 ## Installation
 
-### HACS (recommended)
+### Marketplace (recommended)
 
-1. Open HACS and search for **Dragonfly Shipping**.
-2. Install it and restart Home Assistant if HACS asks you to.
+1. Open the Marketplace and search for **Dragonfly Shipping**.
+2. Install it and restart Home Assistant if it asks you to.
 
-Or click the button below to open it directly in HACS:
+Or click the button below to open it directly in the Marketplace:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ha-parcel-integrations&repository=ha-dragonfly&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ha-parcel-integrations&repository=ha-dragonfly&category=integration)
 
 ### Manual
 
