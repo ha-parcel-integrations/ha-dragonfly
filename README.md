@@ -38,7 +38,7 @@ A custom Home Assistant integration that tracks your [Dragonfly Shipping](https:
 - Track any number of Dragonfly parcels by Track & Trace code — no account, no postal code
 - Per-parcel sensor with the canonical status (`registered` / `in_transit` / `out_for_delivery` / `delivered` / …), the carrier's own status text (in your hub's country language), the expected delivery window and a tracking deep-link
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
-- Read-only **Deliveries** calendar with the expected delivery windows
+- Read-only **Deliveries** calendar with the expected delivery windows; a parcel expected sometime on a day shows as an all-day event
 - `dragonfly.track_parcel` / `dragonfly.untrack_parcel` services, so a dashboard button can add a parcel
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered, delivery time changed)
 - Opt-in per-parcel status history

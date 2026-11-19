@@ -334,9 +334,9 @@ def test_normalize_real_payload_epoch_ms_and_eta_fallback():
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
     assert parcel["raw_status"] == "We zijn onderweg naar je!"
     assert parcel["sender"] is None
-    # public_eta null → top-level eta; buffered_eta == eta → no window end
+    # public_eta null → top-level eta; buffered_eta == eta → the end of its day
     assert parcel["planned_from"] == "2026-07-16T17:50:47.000000+02:00"
-    assert parcel["planned_to"] is None
+    assert parcel["planned_to"] == "2026-07-16T23:59:59+02:00"
     # epoch-ms history timestamps become ISO strings, oldest first
     assert parcel["history"][0]["timestamp"] == "2026-07-15T22:16:09.791000+00:00"
     assert parcel["history"][0]["status"] == ParcelStatus.REGISTERED
@@ -348,6 +348,25 @@ def test_normalize_delivered_at_converts_epoch_ms():
     raw["last_status"]["timestamp"] = 1784203767167
     parcel = normalize_parcel(raw)
     assert parcel["delivered_at"] == "2026-07-16T12:09:27.167000+00:00"
+
+
+def test_normalize_date_only_eta_spans_its_whole_day():
+    """#11: a parcel without a window yet carries local midnight only."""
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["eta"] = "2026-11-19T00:00:00.000000+01:00"
+    raw["buffered_eta"] = "2026-11-18T23:00:00.000Z"
+    parcel = normalize_parcel(raw)
+    assert parcel["planned_from"] == "2026-11-19T00:00:00.000000+01:00"
+    assert parcel["planned_to"] == "2026-11-19T23:59:59+01:00"
+
+
+def test_normalize_utc_moment_gets_no_window_end():
+    raw = active_sample()
+    raw["public_eta"] = None
+    raw["eta"] = "2026-07-16T16:00:00Z"
+    raw["buffered_eta"] = "2026-07-16T16:00:00Z"
+    assert normalize_parcel(raw)["planned_to"] is None
 
 
 def test_normalize_distinct_buffered_eta_becomes_window_end():
@@ -397,8 +416,8 @@ def test_normalize_in_transit_day_level_eta_is_surfaced():
 
     ``etaType: "none"``, a next-day-midnight ``eta`` and a ``buffered_eta``
     at the same instant. The site hides this day-level estimate; HA still
-    surfaces ``planned_from`` (``planned_to`` collapses since the two
-    timestamps coincide).
+    surfaces ``planned_from``; the two timestamps coincide, so the window
+    runs to the end of that day (#11).
     """
     raw = active_sample()
     raw["public_eta"] = None
@@ -408,7 +427,7 @@ def test_normalize_in_transit_day_level_eta_is_surfaced():
     raw["buffered_eta"] = "2026-08-08T22:00:00.000Z"
     parcel = normalize_parcel(raw)
     assert parcel["planned_from"] == "2026-08-09T00:00:00.000000+02:00"
-    assert parcel["planned_to"] is None
+    assert parcel["planned_to"] == "2026-08-09T23:59:59+02:00"
 
 
 def test_normalize_live_buffered_eta_absent_falls_back_to_buffered_eta():

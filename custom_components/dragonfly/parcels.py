@@ -9,7 +9,7 @@ coordinator only fetches, caches and fires events.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 import logging
 import re
 
@@ -105,6 +105,9 @@ def map_event_status(step: int | None) -> ParcelStatus | None:
         return mapped
     _warn_unmapped_step(step)
     return None
+
+
+_END_OF_DAY = time(23, 59, 59)
 
 
 def _parse_iso(value: str | None) -> datetime | None:
@@ -274,6 +277,15 @@ def normalize_parcel(
     elif from_dt and to_dt and to_dt < from_dt:
         # The courier's revision can land before the static estimate too.
         eta_from, eta_to = eta_to, eta_from
+    # A moment alone is expected until the end of its day (#11): a date-only
+    # estimate is local midnight, which a calendar would otherwise show as
+    # one hour. Only in the moment's own offset; a bare UTC one has no local
+    # day to end.
+    start_dt = _parse_iso(eta_from)
+    if eta_to is None and start_dt is not None and start_dt.utcoffset():
+        eta_to = datetime.combine(
+            start_dt.date(), _END_OF_DAY, tzinfo=start_dt.tzinfo
+        ).isoformat()
 
     # ``last_mile_pickup`` is a driver-comes-to-you task (e.g. a return
     # pickup), not a pickup-point delivery — Dragonfly delivers to the door
