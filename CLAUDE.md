@@ -88,14 +88,21 @@ extra request (it ships in the same response).
 diagnostic `last_update`), `button` (refresh), `calendar` (deliveries, read-only,
 enabled by default), device triggers. **No pickup-point sensors** — Dragonfly has
 no parcel-shop network, so `at_pickup_point` never occurs and GLS's
-`en_route_to_pickup_point` / `awaiting_pickup` sensors were dropped.
+`en_route_to_pickup_point` / `awaiting_pickup` sensors were dropped. `pickup` is
+a constant `False` (a `last_mile_pickup` task is a driver collecting from the
+sender, not a pickup point).
+
+**Parcel contract:** `parcels.py` carries the shared helpers (`planned_window`,
+`planned_for_status`, `is_pickup`). `last_status.isDelivered` is folded into the
+status mapping and `delivered` is `status is DELIVERED`. The window is emptied
+once delivered; `next_delivery` skips a parcel whose window has ended.
 
 **A lone ETA moment runs to the end of its day** (#11): when no window end
 differs from the start (`buffered_eta` is often the same instant),
 `planned_to` is 23:59:59 on the moment's own day in its own offset, so a
 date-only estimate (local midnight) is 00:00–23:59:59 and the calendar shows
-it as an all-day event. A moment in UTC has no local day to end, so it keeps
-`planned_to: None`; the calendar then gives it one hour.
+it as an all-day event. The hub serves several time zones, so a moment in UTC
+ends the day in Home Assistant's own zone, where the parcel arrives.
 
 ## Running tests
 

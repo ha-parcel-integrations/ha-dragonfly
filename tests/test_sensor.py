@@ -1,6 +1,6 @@
 """Tests for Dragonfly sensor property logic."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from custom_components.dragonfly.const import ParcelStatus
@@ -68,12 +68,12 @@ def test_parcel_sensor_missing_barcode():
 def test_next_delivery_picks_earliest():
     coordinator = _coordinator(
         [
-            _parcel("A", planned_from="2026-05-02T10:00:00Z"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("A", planned_from="2099-05-02T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = DragonflyNextDeliverySensor(coordinator, _entry())
-    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    assert sensor.native_value == datetime(2099, 5, 1, 10, 0, tzinfo=UTC)
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
@@ -87,7 +87,7 @@ def test_next_delivery_skips_unparseable_moment():
     coordinator = _coordinator(
         [
             _parcel("A", planned_from="not-a-date"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = DragonflyNextDeliverySensor(coordinator, _entry())
@@ -109,3 +109,25 @@ def test_last_update_sensor():
     coordinator.last_success_time = moment
     sensor = DragonflyLastUpdateSensor(coordinator, _entry())
     assert sensor.native_value == moment
+
+
+def _in(**delta) -> str:
+    return (datetime.now(UTC) + timedelta(**delta)).isoformat()
+
+
+def test_next_delivery_skips_a_window_that_has_ended():
+    stale = _parcel("A", planned_from=_in(days=-3))
+    stale["planned_to"] = _in(days=-2)
+    moment_only = _parcel("B", planned_from=_in(hours=-2))
+    sensor = DragonflyNextDeliverySensor(
+        _coordinator([stale, moment_only, _parcel("C", planned_from=_in(days=2))]),
+        _entry(),
+    )
+    assert sensor.extra_state_attributes["barcode"] == "C"
+
+
+def test_next_delivery_keeps_a_window_that_is_still_running():
+    running = _parcel("A", planned_from=_in(hours=-1))
+    running["planned_to"] = _in(hours=2)
+    sensor = DragonflyNextDeliverySensor(_coordinator([running]), _entry())
+    assert sensor.extra_state_attributes["barcode"] == "A"

@@ -266,11 +266,11 @@ def test_normalize_delivered_via_flag_without_step():
     assert parcel["delivered"] is True  # last_status.isDelivered
 
 
-def test_normalize_pickup_task():
+def test_a_driver_pickup_task_is_not_a_pickup_point():
     raw = active_sample()
     raw["last_status"]["task_type"] = "last_mile_pickup"
     parcel = normalize_parcel(raw)
-    assert parcel["pickup"] is True
+    assert parcel["pickup"] is False
     assert parcel["pickup_point"] is None
 
 
@@ -361,12 +361,13 @@ def test_normalize_date_only_eta_spans_its_whole_day():
     assert parcel["planned_to"] == "2026-11-19T23:59:59+01:00"
 
 
-def test_normalize_utc_moment_gets_no_window_end():
+async def test_normalize_utc_moment_ends_the_day_in_the_users_zone(hass):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
     raw = active_sample()
     raw["public_eta"] = None
     raw["eta"] = "2026-07-16T16:00:00Z"
     raw["buffered_eta"] = "2026-07-16T16:00:00Z"
-    assert normalize_parcel(raw)["planned_to"] is None
+    assert normalize_parcel(raw)["planned_to"] == "2026-07-16T23:59:59+02:00"
 
 
 def test_normalize_distinct_buffered_eta_becomes_window_end():
