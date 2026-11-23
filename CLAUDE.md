@@ -53,7 +53,7 @@ This repo follows it exactly.
 - **`contents` is user text only** — the Dragonfly payload has no description of
   the goods, so `normalize_parcel` returns `contents: None` and `CAPABILITIES`
   does not list it. The user's value lives in a per-entry `ContentsStore`
-  (`contents.py`, copied verbatim from the template; `.storage`, capped at 200
+  (`contents.py`; `.storage`, capped at 200
   codes, removed in `async_remove_entry`), never in `options`, and is overlaid
   by the coordinator right after normalising, keyed on the requested code.
   Set via `dragonfly.update_contents` or the optional `contents` field of
