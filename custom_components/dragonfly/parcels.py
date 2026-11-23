@@ -377,11 +377,9 @@ def normalize_parcel(
     from_dt = _parse_iso(eta_from)
     # The hub serves several time zones: a moment with its own offset ends its
     # own day, a bare UTC one ends the day in the user's Home Assistant zone.
-    zone = (
-        from_dt.tzinfo
-        if from_dt is not None and from_dt.utcoffset()
-        else dt_util.get_default_time_zone()
-    )
+    zone = dt_util.get_default_time_zone()
+    if from_dt is not None and from_dt.utcoffset() and from_dt.tzinfo is not None:
+        zone = from_dt.tzinfo
     planned_from, planned_to = planned_window(eta_from, eta_to, zone=zone)
     planned_from, planned_to = planned_for_status(status, planned_from, planned_to)
 
