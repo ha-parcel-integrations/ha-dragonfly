@@ -40,6 +40,7 @@ A custom Home Assistant integration that tracks your [Dragonfly Shipping](https:
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
 - Read-only **Deliveries** calendar with the expected delivery windows; a parcel expected sometime on a day shows as an all-day event
 - `dragonfly.track_parcel` / `dragonfly.untrack_parcel` services, so a dashboard button can add a parcel
+- A `contents` field on every parcel, set by you with `dragonfly.update_contents` (or the optional `contents` field of `track_parcel`); it titles the calendar event and shows on the next-delivery sensor
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered, delivery time changed)
 - Opt-in per-parcel status history
 - Manual refresh button and a diagnostic last-update sensor
@@ -153,8 +154,9 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `dragonfly.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `dragonfly.track_parcel` | `tracking_code`, `contents` (optional) | Start tracking a parcel |
 | `dragonfly.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+| `dragonfly.update_contents` | `tracking_code`, `contents` (optional) | Set what is in a parcel, in your own words; empty clears it |
 
 ## Examples
 

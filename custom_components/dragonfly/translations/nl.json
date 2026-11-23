@@ -98,6 +98,10 @@
         "tracking_code": {
           "name": "Trackingcode",
           "description": "De Dragonfly Track & Trace-code."
+        },
+        "contents": {
+          "name": "Inhoud",
+          "description": "Wat er in het pakket zit, in je eigen woorden. Opnieuw aanroepen voor een gevolgd pakket vervangt de inhoud; een lege tekst wist deze."
         }
       }
     },
@@ -108,6 +112,20 @@
         "tracking_code": {
           "name": "Trackingcode",
           "description": "De Dragonfly Track & Trace-code om niet meer te volgen."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Pakketinhoud bijwerken",
+      "description": "Stel in wat er in een pakket zit, in je eigen woorden, voor een trackingcode. Een lege tekst wist de inhoud.",
+      "fields": {
+        "tracking_code": {
+          "name": "Trackingcode",
+          "description": "De Dragonfly Track & Trace-code."
+        },
+        "contents": {
+          "name": "Inhoud",
+          "description": "Wat er in het pakket zit, in je eigen woorden. Een lege tekst wist de inhoud."
         }
       }
     }

@@ -29,6 +29,7 @@ from .const import (
     STAGGER_MINUTES,
     ParcelStatus,
 )
+from .contents import ContentsStore
 from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_ts
 
 _LOGGER = logging.getLogger(__name__)
@@ -139,6 +140,7 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=timedelta(minutes=HOT_INTERVAL_MINUTES),
         )
         self._client = client
+        self.contents_store = ContentsStore(hass, entry.entry_id)
         self._country = country
         self.delivered: list[dict] = []
         # tracking_code -> last successful raw payload, so a transient fetch
@@ -168,6 +170,13 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         # diagnostics; ``None`` before the first refresh and whenever polling
         # is fully suspended (nothing tracked, or everything delivered).
         self._current_tier_minutes: int | None = None
+
+    def _apply_contents(self, parcel: dict, code: object) -> dict:
+        """Put the user's own contents text over the carrier's, when there is one."""
+        user_value = self.contents_store.get(code)
+        if user_value is not None:
+            parcel["contents"] = user_value
+        return parcel
 
     @property
     def current_tier_minutes(self) -> int | None:
@@ -297,8 +306,11 @@ class DragonflyCoordinator(DataUpdateCoordinator[list[dict]]):
         entries = [
             (
                 code,
-                normalize_parcel(
-                    raw, include_history=include_history, country=self._country
+                self._apply_contents(
+                    normalize_parcel(
+                        raw, include_history=include_history, country=self._country
+                    ),
+                    code,
                 ),
             )
             for code, raw in raws_by_code.items()

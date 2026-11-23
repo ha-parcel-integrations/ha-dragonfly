@@ -12,6 +12,7 @@ async def test_diagnostics_redacts_and_counts(hass):
         {
             "barcode": "INTLCM123456",
             "sender": "ACME",
+            "contents": "Running shoes",
             "status": "out_for_delivery",
             "raw": {
                 "tracking_id": "INTLCM123456",
@@ -33,6 +34,7 @@ async def test_diagnostics_redacts_and_counts(hass):
     # tracking codes and payload PII are redacted
     assert result["entry_options"]["parcels"][0]["tracking_code"] == "**REDACTED**"
     assert result["incoming"][0]["barcode"] == "**REDACTED**"
+    assert result["incoming"][0]["contents"] == "**REDACTED**"
     assert result["incoming"][0]["raw"]["driver_name"] == "**REDACTED**"
     assert result["incoming"][0]["raw"]["package_location"] == "**REDACTED**"
     # non-PII fields survive

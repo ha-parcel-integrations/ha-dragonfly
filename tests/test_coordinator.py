@@ -219,6 +219,11 @@ def test_normalize_history_opt_in():
     assert parcel["history"][0]["status"] == ParcelStatus.REGISTERED
 
 
+def test_normalize_leaves_contents_empty_for_the_user_to_fill():
+    assert normalize_parcel(active_sample())["contents"] is None
+    assert normalize_parcel(delivered_sample())["contents"] is None
+
+
 def test_capabilities_are_known_values():
     """A typo here would silently misreport this carrier on the docs site."""
     assert CAPABILITIES <= KNOWN_CAPABILITIES
@@ -1100,3 +1105,61 @@ async def test_update_fetches_parcels_concurrently(hass):
 
     await coordinator._async_update_data()
     assert peak == 2
+
+
+# ---------------------------------------------------------------------------
+# contents overlay
+# ---------------------------------------------------------------------------
+
+
+async def test_user_contents_overlays_the_parcel_and_can_be_cleared(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = active_sample()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+
+    data = await coordinator._async_update_data()
+    assert data[0]["contents"] is None
+
+    coordinator.contents_store.async_set("INTLCMB2C000999999", "Running shoes")
+    data = await coordinator._async_update_data()
+    assert data[0]["contents"] == "Running shoes"
+
+    coordinator.contents_store.async_set("INTLCMB2C000999999", None)
+    data = await coordinator._async_update_data()
+    assert data[0]["contents"] is None
+
+
+async def test_user_contents_is_keyed_on_the_requested_code(hass):
+    """A response carrying another code still finds the value stored for the request."""
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = active_sample("INTLCMB2C000777777")
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+    coordinator.contents_store.async_set("INTLCMB2C000999999", "Running shoes")
+
+    data = await coordinator._async_update_data()
+
+    assert data[0]["barcode"] == "INTLCMB2C000777777"
+    assert data[0]["contents"] == "Running shoes"
+
+
+async def test_user_contents_reaches_the_delivered_list_and_events(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: "INTLCMB2C000999999"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    coordinator = DragonflyCoordinator(hass, client, entry, country="NL")
+    coordinator.contents_store.async_set("INTLCMB2C000999999", "Running shoes")
+    delivered = []
+    hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
+
+    client.async_get_parcel.return_value = active_sample("INTLCMB2C000999999")
+    await coordinator._async_update_data()
+    client.async_get_parcel.return_value = delivered_sample("INTLCMB2C000999999")
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert coordinator.delivered[0]["contents"] == "Running shoes"
+    assert delivered[0].data["contents"] == "Running shoes"

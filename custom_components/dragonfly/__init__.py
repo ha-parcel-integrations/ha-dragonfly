@@ -11,6 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import DragonflyApiClient
 from .const import CONF_COUNTRY, COUNTRIES, DEFAULT_COUNTRY, PLATFORMS
+from .contents import ContentsStore
 from .coordinator import DragonflyCoordinator
 from .services import async_setup_services, async_unload_services
 
@@ -38,6 +39,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: DragonflyConfigEntry) ->
     # No auth: Dragonfly tracking is public, so the HA-managed session is fine.
     client = DragonflyApiClient(async_get_clientsession(hass), host=host)
     coordinator = DragonflyCoordinator(hass, client, entry, country=country)
+
+    await coordinator.contents_store.async_load()
 
     # Fetch initial data here, before forwarding to platforms. Raising
     # ConfigEntryNotReady from a forwarded platform is too late for HA to catch
@@ -78,3 +81,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: DragonflyConfigEntry) -
     # always go when the entry unloads.
     async_unload_services(hass)
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: DragonflyConfigEntry) -> None:
+    """Delete the contents the user set for the removed entry."""
+    await ContentsStore(hass, entry.entry_id).async_remove()

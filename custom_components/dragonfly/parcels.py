@@ -392,6 +392,7 @@ def normalize_parcel(
         "barcode": tracking_code,
         "sender": raw.get("client_code") or None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": status_label(last_status, country=country),
         "delivered": delivered,

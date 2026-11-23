@@ -14,6 +14,7 @@ TO_REDACT = {
     "tracking_code",
     "barcode",
     "sender",
+    "contents",
     "url",
     # Dragonfly payload fields
     "tracking_id",
